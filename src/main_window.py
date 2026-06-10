@@ -66,7 +66,7 @@ class MainWindow(QWidget):
         from src.screenshot import ScreenshotManager
         from src.screenshot_translate import ScreenshotTranslatePanel
         from src.settings_panel import SettingsPanel
-        from src.sticky_note import StickyNoteManager
+        from src.sticky_note.manager import StickyNoteManager
         from src.task_panel import TaskPanel
         from src.timer import TimerPanel
 
