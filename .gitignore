@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.spec
+*.pyz
+
+# PaddleOCR / PaddlePaddle models
+*inference*
+*.pdmodel
+*.pdiparams
+*.pdopt
+*.pdparams
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Installer
+*.exe
+*.msi
+*.zip
+installer/
+
+# Environment
+.env
+venv/
+.venv/
