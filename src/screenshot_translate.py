@@ -136,17 +136,10 @@ class RegionSelector(QWidget):
             self.close()
 
 
+from src.theme import COLORS
+
+
 class ScreenshotTranslatePanel(QWidget):
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-        'border': '#BDC3C7',
-        'hover': '#D5DBDB',
-    }
 
     def __init__(self, settings, sticky_manager=None, parent=None):
         super().__init__(parent)
@@ -170,14 +163,14 @@ class ScreenshotTranslatePanel(QWidget):
                 background-color: white;
             }}
             QLabel {{
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
             }}
             QLineEdit {{
                 border: none;
                 border-radius: 6px;
                 padding: 10px 12px;
                 background-color: #F5F5F5;
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 font-size: 13px;
                 min-height: 20px;
             }}
@@ -192,7 +185,7 @@ class ScreenshotTranslatePanel(QWidget):
                 border-radius: 6px;
                 padding: 10px 12px;
                 background-color: #F5F5F5;
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 font-size: 13px;
                 min-height: 20px;
             }}
@@ -210,8 +203,8 @@ class ScreenshotTranslatePanel(QWidget):
             QComboBox QAbstractItemView {{
                 border: 1px solid #DEE2E6;
                 background-color: white;
-                selection-background-color: {self.COLORS['hover']};
-                selection-color: {self.COLORS['text_primary']};
+                selection-background-color: {COLORS['hover']};
+                selection-color: {COLORS['text_primary']};
                 padding: 4px;
             }}
             QCheckBox {{
@@ -228,18 +221,18 @@ class ScreenshotTranslatePanel(QWidget):
                 background-color: white;
             }}
             QCheckBox::indicator:checked {{
-                border: 2px solid {self.COLORS['primary']};
-                background-color: {self.COLORS['primary']};
+                border: 2px solid {COLORS['primary']};
+                background-color: {COLORS['primary']};
             }}
             QCheckBox::indicator:hover {{
-                border-color: {self.COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
             QToolTip {{
                 background-color: white;
                 border: 1px solid #DEE2E6;
                 border-radius: 8px;
                 padding: 12px 16px;
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 font-size: 12px;
             }}
         """)
@@ -253,7 +246,7 @@ class ScreenshotTranslatePanel(QWidget):
         self.translate_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.translate_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -311,17 +304,17 @@ class ScreenshotTranslatePanel(QWidget):
         help_btn.setCursor(Qt.CursorShape.WhatsThisCursor)
         help_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['background']};
-                border: 1px solid {self.COLORS['border']};
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
                 border-radius: 12px;
                 font-size: 13px;
                 font-weight: bold;
-                color: {self.COLORS['text_secondary']};
+                color: {COLORS['text_secondary']};
             }}
             QPushButton:hover {{
-                background-color: {self.COLORS['hover']};
-                color: {self.COLORS['primary']};
-                border-color: {self.COLORS['primary']};
+                background-color: {COLORS['hover']};
+                color: {COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
         """)
         help_btn.setToolTip(

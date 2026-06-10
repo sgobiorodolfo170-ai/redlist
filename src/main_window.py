@@ -5,6 +5,7 @@ from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QStackedLayout, QVBoxLayout, QWidget
 
+from src.theme import COLORS
 from src.translation.translation_service import TranslationService
 from src.utils.logger import get_logger
 
@@ -13,17 +14,6 @@ logger = get_logger("MainWindow")
 
 class MainWindow(QWidget):
     show_window_signal = pyqtSignal()
-
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'accent': '#3498DB',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-        'hover': '#D5DBDB'
-    }
 
     DOCK_CHECK_INTERVAL = 200
     MOUSE_CHECK_INTERVAL = 100
@@ -117,7 +107,7 @@ class MainWindow(QWidget):
         container = QFrame()
         container.setStyleSheet(f"""
             QFrame {{
-                background-color: {self.COLORS['card_bg']};
+                background-color: {COLORS['card_bg']};
                 border-radius: 8px;
                 border: 1px solid #BDC3C7;
             }}
@@ -159,7 +149,7 @@ class MainWindow(QWidget):
         title_bar = QFrame()
         title_bar.setStyleSheet(f"""
             QFrame {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
             }}
@@ -220,7 +210,7 @@ class MainWindow(QWidget):
         toolbar = QFrame()
         toolbar.setStyleSheet(f"""
             QFrame {{
-                background-color: {self.COLORS['background']};
+                background-color: {COLORS['background']};
                 border-bottom: 1px solid #BDC3C7;
             }}
         """)
@@ -250,10 +240,10 @@ class MainWindow(QWidget):
                     font-size: 18px;
                 }}
                 QPushButton:hover {{
-                    background-color: {self.COLORS['hover']};
+                    background-color: {COLORS['hover']};
                 }}
                 QPushButton:checked {{
-                    background-color: {self.COLORS['primary']};
+                    background-color: {COLORS['primary']};
                     color: white;
                 }}
             """)

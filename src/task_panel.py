@@ -60,18 +60,11 @@ class TaskCheckBox(QCheckBox):
         return self.sizeHint()
 
 
+from src.theme import COLORS
+
+
 class TaskPanel(QWidget):
     task_changed = pyqtSignal()
-
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-        'border': '#BDC3C7'
-    }
 
     def __init__(self, settings):
         super().__init__()
@@ -106,7 +99,7 @@ class TaskPanel(QWidget):
         self.header_label.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {self.COLORS['text_primary']};
+            color: {COLORS['text_primary']};
             padding: 8px 0;
         """)
         layout.addWidget(self.header_label)
@@ -148,7 +141,7 @@ class TaskPanel(QWidget):
         self.task_input.setPlaceholderText("添加新任务...")
         self.task_input.setStyleSheet(f"""
             QLineEdit {{
-                border: 1px solid {self.COLORS['border']};
+                border: 1px solid {COLORS['border']};
                 border-radius: 4px;
                 padding: 10px;
                 background: white;
@@ -156,7 +149,7 @@ class TaskPanel(QWidget):
                 color: black;
             }}
             QLineEdit:focus {{
-                border-color: {self.COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
         """)
         self.task_input.returnPressed.connect(self.add_task)
@@ -166,7 +159,7 @@ class TaskPanel(QWidget):
         add_btn.setFixedHeight(36)
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
                 border-radius: 4px;

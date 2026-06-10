@@ -113,10 +113,9 @@ class TranslationService:
         return result
 
     def _do_translate(self, text: str, source_lang: str, target_lang: str) -> Optional[TranslationResult]:
-        if self.provider == 'baidu_llm' and self.baidu_app_id and self.baidu_app_key:
-            return self._translate_baidu_llm(text, source_lang, target_lang)
-        elif self.provider == 'baidu_nmt' and self.baidu_app_id and self.baidu_app_key:
-            return self._translate_baidu_nmt(text, source_lang, target_lang)
+        if self.provider in ('baidu_llm', 'baidu_nmt') and self.baidu_app_id and self.baidu_app_key:
+            model_type = "llm" if self.provider == "baidu_llm" else None
+            return self._translate_baidu(text, source_lang, target_lang, model_type)
         elif self.provider == 'tencent' and self.tencent_secret_id and self.tencent_secret_key:
             return self._translate_tencent(text, source_lang, target_lang)
         elif self.provider == 'deepl' and self.deepl_api_key:
@@ -124,54 +123,16 @@ class TranslationService:
 
         return None
 
-    def _translate_baidu_llm(self, text: str, source_lang: str,
-                           target_lang: str) -> Optional[TranslationResult]:
-        url = "https://fanyi-api.baidu.com/ait/api/aiTextTranslate"
-
-        salt = random.randint(32768, 65536)
-        sign_str = f"{self.baidu_app_id}{text}{salt}{self.baidu_app_key}"
-        sign = hashlib.md5(sign_str.encode()).hexdigest()
-
-        params = {
-            "appid": self.baidu_app_id,
-            "q": text,
-            "from": source_lang,
-            "to": target_lang,
-            "salt": salt,
-            "sign": sign,
-            "model_type": "llm"
-        }
-
-        try:
-            session = self._get_session()
-            response = session.post(url, json=params, timeout=10)
-            result = response.json()
-
-            if "error_code" in result:
-                logger.error(f"[百度大模型翻译] 错误: {result.get('error_code')} - {result.get('error_msg')}")
-                return None
-
-            if "trans_result" in result and result["trans_result"]:
-                translated = "".join([r["dst"] for r in result["trans_result"]])
-                return TranslationResult(
-                    original_text=text,
-                    translated_text=translated,
-                    source_lang=source_lang,
-                    target_lang=target_lang,
-                    provider="baidu_llm"
-                )
-        except requests.exceptions.Timeout:
-            logger.error("[百度大模型翻译] 请求超时")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"[百度大模型翻译] 网络错误: {e}")
-        except Exception as e:
-            logger.exception(f"[百度大模型翻译] 未知错误: {e}")
-
-        return None
-
-    def _translate_baidu_nmt(self, text: str, source_lang: str,
-                           target_lang: str) -> Optional[TranslationResult]:
-        url = "https://fanyi-api.baidu.com/api/trans/vip/translate"
+    def _translate_baidu(self, text: str, source_lang: str,
+                        target_lang: str, model_type: Optional[str] = None) -> Optional[TranslationResult]:
+        if model_type == "llm":
+            url = "https://fanyi-api.baidu.com/ait/api/aiTextTranslate"
+            label = "百度大模型翻译"
+            provider = "baidu_llm"
+        else:
+            url = "https://fanyi-api.baidu.com/api/trans/vip/translate"
+            label = "百度通用翻译"
+            provider = "baidu_nmt"
 
         salt = random.randint(32768, 65536)
         sign_str = f"{self.baidu_app_id}{text}{salt}{self.baidu_app_key}"
@@ -185,14 +146,19 @@ class TranslationService:
             "salt": salt,
             "sign": sign
         }
+        if model_type == "llm":
+            params["model_type"] = "llm"
 
         try:
             session = self._get_session()
-            response = session.get(url, params=params, timeout=10)
+            if model_type == "llm":
+                response = session.post(url, json=params, timeout=10)
+            else:
+                response = session.get(url, params=params, timeout=10)
             result = response.json()
 
             if "error_code" in result:
-                logger.error(f"[百度通用翻译] 错误: {result.get('error_code')} - {result.get('error_msg')}")
+                logger.error(f"[{label}] 错误: {result.get('error_code')} - {result.get('error_msg')}")
                 return None
 
             if "trans_result" in result and result["trans_result"]:
@@ -202,14 +168,14 @@ class TranslationService:
                     translated_text=translated,
                     source_lang=source_lang,
                     target_lang=target_lang,
-                    provider="baidu_nmt"
+                    provider=provider
                 )
         except requests.exceptions.Timeout:
-            logger.error("[百度通用翻译] 请求超时")
+            logger.error(f"[{label}] 请求超时")
         except requests.exceptions.RequestException as e:
-            logger.error(f"[百度通用翻译] 网络错误: {e}")
+            logger.error(f"[{label}] 网络错误: {e}")
         except Exception as e:
-            logger.exception(f"[百度通用翻译] 未知错误: {e}")
+            logger.exception(f"[{label}] 未知错误: {e}")
 
         return None
 

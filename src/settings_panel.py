@@ -17,17 +17,11 @@ from PyQt6.QtWidgets import (
 )
 
 
+from src.theme import COLORS
+from src.utils.sound import play_sound
+
+
 class SettingsPanel(QWidget):
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-        'border': '#BDC3C7',
-        'hover': '#D5DBDB'
-    }
 
     def __init__(self, settings, main_window):
         super().__init__()
@@ -41,32 +35,32 @@ class SettingsPanel(QWidget):
                 background-color: white;
             }}
             QLabel {{
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 font-size: 13px;
             }}
             QSpinBox, QLineEdit {{
                 border: none;
                 border-radius: 4px;
                 padding: 4px 6px;
-                background-color: {self.COLORS['background']};
-                color: {self.COLORS['text_primary']};
+                background-color: {COLORS['background']};
+                color: {COLORS['text_primary']};
                 font-size: 12px;
                 min-height: 24px;
             }}
             QSpinBox:focus, QLineEdit:focus {{
-                background-color: {self.COLORS['hover']};
+                background-color: {COLORS['hover']};
             }}
             QComboBox {{
                 border: none;
                 border-radius: 4px;
                 padding: 4px 6px;
-                background-color: {self.COLORS['background']};
-                color: {self.COLORS['text_primary']};
+                background-color: {COLORS['background']};
+                color: {COLORS['text_primary']};
                 font-size: 12px;
                 min-height: 24px;
             }}
             QComboBox:focus {{
-                background-color: {self.COLORS['hover']};
+                background-color: {COLORS['hover']};
             }}
             QComboBox::drop-down {{
                 border: none;
@@ -77,12 +71,12 @@ class SettingsPanel(QWidget):
                 border: none;
             }}
             QComboBox QAbstractItemView {{
-                border: 1px solid {self.COLORS['border']};
+                border: 1px solid {COLORS['border']};
                 background-color: white;
-                selection-background-color: {self.COLORS['hover']};
+                selection-background-color: {COLORS['hover']};
             }}
             QCheckBox {{
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 font-size: 13px;
                 spacing: 8px;
             }}
@@ -91,17 +85,17 @@ class SettingsPanel(QWidget):
                 height: 18px;
             }}
             QCheckBox::indicator:unchecked {{
-                border: 2px solid {self.COLORS['border']};
+                border: 2px solid {COLORS['border']};
                 border-radius: 4px;
                 background-color: white;
             }}
             QCheckBox::indicator:checked {{
-                border: 2px solid {self.COLORS['primary']};
+                border: 2px solid {COLORS['primary']};
                 border-radius: 4px;
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
             }}
             QCheckBox::indicator:hover {{
-                border-color: {self.COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
         """)
 
@@ -113,7 +107,7 @@ class SettingsPanel(QWidget):
         header.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {self.COLORS['text_primary']};
+            color: {COLORS['text_primary']};
             padding: 8px 0;
         """)
         layout.addWidget(header)
@@ -198,15 +192,15 @@ class SettingsPanel(QWidget):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background-color: {self.COLORS['background']};
-                border: 1px solid {self.COLORS['border']};
+                background-color: {COLORS['background']};
+                border: 1px solid {COLORS['border']};
                 border-radius: 4px;
                 font-size: 12px;
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
             }}
             QPushButton:hover {{
-                background-color: {self.COLORS['hover']};
-                border-color: {self.COLORS['primary']};
+                background-color: {COLORS['hover']};
+                border-color: {COLORS['primary']};
             }}
         """
 
@@ -251,18 +245,9 @@ class SettingsPanel(QWidget):
 
     def _test_sound(self):
         try:
-            import ctypes
             sounds_dir = self.settings.get_sounds_dir()
             sound_path = os.path.join(sounds_dir, self.alarm_combo.currentText())
             if os.path.exists(sound_path):
-                sound_path = sound_path.replace('\\', '\\\\')
-                winmm = ctypes.windll.winmm
-                winmm.mciSendStringW('close sound', 0, 0, 0)
-                ext = os.path.splitext(sound_path)[1].lower()
-                if ext == '.mid':
-                    winmm.mciSendStringW(f'open "{sound_path}" type sequencer alias sound', 0, 0, 0)
-                else:
-                    winmm.mciSendStringW(f'open "{sound_path}" alias sound', 0, 0, 0)
-                winmm.mciSendStringW('play sound', 0, 0, 0)
+                play_sound(sound_path)
         except Exception:
             pass

@@ -16,13 +16,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-COLORS = {
-    'yellow': '#FFF9C4',
-    'blue': '#BBDEFB',
-    'green': '#C8E6C9',
-    'pink': '#F8BBD9',
-    'purple': '#E1BEE7'
-}
+from src.theme import COLORS, NOTE_COLORS
 
 
 class StickyNoteManager:
@@ -513,14 +507,6 @@ class StickyNoteManager:
 
 
 class StickyNotePanel(QWidget):
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-    }
 
     def __init__(self, settings, manager):
         super().__init__()
@@ -582,7 +568,7 @@ class StickyNotePanel(QWidget):
         add_btn.setFixedHeight(36)
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -641,7 +627,7 @@ class StickyNotePanel(QWidget):
 
         # 使用与便签窗口相同的颜色
         color_key = note.get('color', 'yellow')
-        bg_color = COLORS.get(color_key, COLORS['yellow'])
+        bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS['yellow'])
 
         card.setStyleSheet(f"""
             QFrame {{
@@ -688,7 +674,7 @@ class StickyNotePanel(QWidget):
             return
         if hasattr(self, 'card_frames') and note_id in self.card_frames:
             card = self.card_frames[note_id]
-            bg_color = COLORS.get(color_key, COLORS['yellow'])
+            bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS['yellow'])
             card.setStyleSheet(f"""
                 QFrame {{
                     background-color: {bg_color};
@@ -840,7 +826,7 @@ class StickyNoteWindow(QWidget):
         self.init_ui(text)
 
     def init_ui(self, text):
-        bg_color = COLORS.get(self.color, COLORS['yellow'])
+        bg_color = NOTE_COLORS.get(self.color, NOTE_COLORS['yellow'])
 
         self.setStyleSheet(f"""
             QWidget {{
@@ -913,11 +899,11 @@ class StickyNoteWindow(QWidget):
 
     def mouseDoubleClickEvent(self, event):
         """双击换色"""
-        colors = list(COLORS.keys())
+        colors = list(NOTE_COLORS.keys())
         current_index = colors.index(self.color) if self.color in colors else 0
         next_index = (current_index + 1) % len(colors)
         self.color = colors[next_index]
-        bg_color = COLORS[self.color]
+        bg_color = NOTE_COLORS[self.color]
         self.setStyleSheet(f"""
             QWidget {{
                 background-color: {bg_color};
@@ -929,7 +915,7 @@ class StickyNoteWindow(QWidget):
     def set_color(self, color_key):
         """设置便签颜色"""
         self.color = color_key
-        bg_color = COLORS[color_key]
+        bg_color = NOTE_COLORS[color_key]
 
         self.setStyleSheet(f"""
             QWidget {{

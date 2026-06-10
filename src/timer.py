@@ -1,25 +1,17 @@
-import ctypes
 import os
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QVBoxLayout, QWidget
 
+from src.theme import COLORS
 from src.utils.logger import get_logger
+from src.utils.sound import play_sound
 
 logger = get_logger("Timer")
 
 
 class TimerPanel(QWidget):
-    COLORS = {
-        'primary': '#E74C3C',
-        'secondary': '#2C3E50',
-        'accent': '#3498DB',
-        'background': '#ECF0F1',
-        'card_bg': '#FFFFFF',
-        'text_primary': '#2C3E50',
-        'text_secondary': '#7F8C8D',
-    }
 
     def __init__(self, settings):
         super().__init__()
@@ -45,7 +37,7 @@ class TimerPanel(QWidget):
         header.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {self.COLORS['text_primary']};
+            color: {COLORS['text_primary']};
             padding: 8px 0;
         """)
         layout.addWidget(header)
@@ -57,19 +49,19 @@ class TimerPanel(QWidget):
         self.countdown_btn.setFixedHeight(32)
         self.countdown_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
                 border-radius: 4px;
                 font-size: 12px;
             }}
             QPushButton:checked {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
             }}
             QPushButton:!checked {{
                 background-color: white;
-                color: {self.COLORS['primary']};
-                border: 1px solid {self.COLORS['primary']};
+                color: {COLORS['primary']};
+                border: 1px solid {COLORS['primary']};
             }}
         """)
         self.countdown_btn.clicked.connect(lambda: self.set_mode('countdown'))
@@ -81,13 +73,13 @@ class TimerPanel(QWidget):
         self.pomodoro_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: white;
-                color: {self.COLORS['primary']};
-                border: 1px solid {self.COLORS['primary']};
+                color: {COLORS['primary']};
+                border: 1px solid {COLORS['primary']};
                 border-radius: 4px;
                 font-size: 12px;
             }}
             QPushButton:checked {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
             }}
@@ -102,7 +94,7 @@ class TimerPanel(QWidget):
         input_layout.setSpacing(8)
 
         input_label = QLabel("设置分钟:")
-        input_label.setStyleSheet(f"color: {self.COLORS['text_secondary']}; font-size: 13px;")
+        input_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 13px;")
         input_layout.addWidget(input_label)
 
         self.minutes_display = QLabel("25")
@@ -115,7 +107,7 @@ class TimerPanel(QWidget):
                 border-radius: 4px;
                 font-size: 18px;
                 font-weight: bold;
-                color: {self.COLORS['text_primary']};
+                color: {COLORS['text_primary']};
                 padding: 4px;
             }}
         """)
@@ -123,8 +115,8 @@ class TimerPanel(QWidget):
 
         btn_style = f"""
             QPushButton {{
-                background-color: {self.COLORS['background']};
-                color: {self.COLORS['text_primary']};
+                background-color: {COLORS['background']};
+                color: {COLORS['text_primary']};
                 border: 1px solid #BDC3C7;
                 border-radius: 4px;
                 font-size: 18px;
@@ -136,10 +128,10 @@ class TimerPanel(QWidget):
             }}
             QPushButton:hover {{
                 background-color: #D5DBDB;
-                border-color: {self.COLORS['primary']};
+                border-color: {COLORS['primary']};
             }}
             QPushButton:pressed {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
             }}
         """
@@ -164,7 +156,7 @@ class TimerPanel(QWidget):
         font.setBold(True)
         self.time_label.setFont(font)
         self.time_label.setStyleSheet(f"""
-            color: {self.COLORS['text_primary']};
+            color: {COLORS['text_primary']};
             padding: 16px 0;
         """)
         layout.addWidget(self.time_label)
@@ -176,11 +168,11 @@ class TimerPanel(QWidget):
             QProgressBar {{
                 border: none;
                 border-radius: 4px;
-                background-color: {self.COLORS['background']};
+                background-color: {COLORS['background']};
                 height: 8px;
             }}
             QProgressBar::chunk {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 border-radius: 4px;
             }}
         """)
@@ -195,7 +187,7 @@ class TimerPanel(QWidget):
         self.start_btn.setFixedHeight(40)
         self.start_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {self.COLORS['primary']};
+                background-color: {COLORS['primary']};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -371,15 +363,7 @@ class TimerPanel(QWidget):
             try:
                 sound_path = self.settings.get_alarm_sound_path()
                 if os.path.exists(sound_path):
-                    sound_path = sound_path.replace('\\', '\\\\')
-                    winmm = ctypes.windll.winmm
-                    winmm.mciSendStringW('close sound', 0, 0, 0)
-                    ext = os.path.splitext(sound_path)[1].lower()
-                    if ext == '.mid':
-                        winmm.mciSendStringW(f'open "{sound_path}" type sequencer alias sound', 0, 0, 0)
-                    else:
-                        winmm.mciSendStringW(f'open "{sound_path}" alias sound', 0, 0, 0)
-                    winmm.mciSendStringW('play sound', 0, 0, 0)
+                    play_sound(sound_path)
                 else:
                     import winsound
                     winsound.MessageBeep(winsound.MB_OK)
