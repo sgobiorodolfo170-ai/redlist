@@ -1,5 +1,25 @@
 # Release Notes
 
+## v3.2 (2026-06-13)
+
+ORM 生命周期管理与内存优化版本。
+
+### 内存管理
+- OCR 服务生命周期管理：延迟加载 + 主动释放资源，避免内存泄漏
+- 便签数量限制：单实例模式，防止多窗口内存溢出
+- 提示音 MCI 资源释放：确保播放后正确释放
+
+### 模块重构
+- 提取 `theme.py`：统一主题颜色和样式管理
+- 提取 `sound.py`：统一提示音播放（MCI 接口封装）
+- 提取 `_BaseMaskOverlay`：消除 overlay 模块中的重复类
+- 合并百度翻译方法：统一翻译服务调用逻辑
+
+### 代码质量
+- 修复潜在死代码崩溃漏洞
+- 统一日志格式化（% 格式化）
+- 新增 pre-commit 配置（代码质量检查）
+
 ## v3.1 (2026-06-11)
 
 代码重构与工程化改进版本。
@@ -7,7 +27,7 @@
 ### 模块重构
 - `screenshot.py` 拆分为 `screenshot/` 包（region_selector / translate_panel / translation_thread）
 - `sticky_note.py` 拆分为 `sticky_note/` 包（manager / window / panel）
-- 公共工具提取到 `src/utils/`：`color.py`（颜色处理）、`geometry.py`（矩形碰撞检测）
+- 公共工具提取到 `src/utils/`：`color.py`（颜色处理）、`geometry.py`（矩形碰撞检测）、`sound.py`（提示音）、`theme.py`（主题）
 
 ### 打包与工程化
 - 优化 `build_final.spec`：`console=False`，排除大型可选依赖，exe 约 150MB

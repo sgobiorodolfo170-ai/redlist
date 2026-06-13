@@ -59,7 +59,10 @@ OCR 服务层，封装 PaddleOCR（延迟加载，首次使用时初始化），
 - `cache.py` — LRU 缓存 + TTL，用于 OCR 和翻译结果缓存
 - `debounce.py` — 防抖执行器，用于配置自动保存
 - `logger.py` — 日志配置，统一的日志输出格式
-- `sound.py` — 系统提示音播放（基于 winmm）
+- `sound.py` — 系统提示音播放（基于 MCI，已优化资源释放）
+
+### theme.py
+统一主题颜色和样式管理，提供界面配色方案。
 
 ### settings.py
 配置管理。使用 `%APPDATA%/RedList/settings.json` 持久化，含防抖自动保存。

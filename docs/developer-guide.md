@@ -28,6 +28,7 @@
 │   ├── main_window.py       # 主窗口（QTabWidget 组织各面板）
 │   ├── settings.py          # 配置管理（加密存储到 %APPDATA%/RedList/）
 │   ├── settings_panel.py    # 设置面板 UI
+│   ├── theme.py             # 主题颜色和样式管理
 │   ├── screenshot_translate.py  # 向后兼容 re-export 模块
 │   ├── task_panel.py        # 任务面板
 │   ├── timer.py             # 定时器
