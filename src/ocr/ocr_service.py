@@ -1,3 +1,4 @@
+import gc
 import hashlib
 import os
 import sys
@@ -60,56 +61,105 @@ class OCRService:
             return
 
         self.use_gpu = use_gpu
-        self.ocr = None
+        self._ocr = None
         self.available = HAS_PIL and HAS_NUMPY
         self._init_error = None
+        self._loading = False
+        self._cancel_load = False
         self._init_lock = threading.Lock()
         self._initialized = True
 
-    def _init_ocr(self):
-        if not self.available:
-            logger.warning(f"[OCR] Not available: PIL={HAS_PIL}, NUMPY={HAS_NUMPY}")
-            return None
-
+    def load_async(self, callback=None):
         with self._init_lock:
-            if self.ocr is not None:
-                return self.ocr
+            if self._loading:
+                logger.debug("[OCR] Already loading, ignoring duplicate request")
+                return
+            if self._ocr is not None:
+                logger.debug("[OCR] Already loaded")
+                if callback:
+                    callback(True)
+                return
+            if not self.available:
+                logger.warning(f"[OCR] Not available: PIL={HAS_PIL}, NUMPY={HAS_NUMPY}")
+                if callback:
+                    callback(False)
+                return
+            self._loading = True
+            self._cancel_load = False
 
+        def _load():
             try:
-                logger.info("[OCR] Initializing PaddleOCR...")
+                logger.info("[OCR] Loading PaddleOCR in background...")
                 from paddleocr import PaddleOCR
-                logger.debug("[OCR] PaddleOCR module imported")
 
-                if hasattr(sys, '_MEIPASS'):
-                    logger.debug(f"[OCR] Packaged environment: {sys._MEIPASS}")
-
-                    home_dir = os.path.expanduser('~')
-                    model_dir = os.path.join(home_dir, '.paddleocr')
-
-                    logger.debug(f"[OCR] Model directory: {model_dir}")
-
-                    if not os.path.exists(model_dir):
-                        logger.warning("[OCR] Model directory does not exist")
-                        logger.info("[OCR] Models will be downloaded on first use")
-
-                self.ocr = PaddleOCR(
+                ocr = PaddleOCR(
                     use_angle_cls=True,
                     lang='ch',
                     use_gpu=self.use_gpu,
                     show_log=False
                 )
-                logger.info("[OCR] PaddleOCR initialized successfully")
-                return self.ocr
+
+                with self._init_lock:
+                    if self._cancel_load:
+                        logger.info("[OCR] Load cancelled, discarding instance")
+                        self._loading = False
+                        if callback:
+                            callback(False)
+                        return
+                    self._ocr = ocr
+                    self._loading = False
+                    self.available = True
+                    self._init_error = None
+
+                logger.info("[OCR] PaddleOCR loaded successfully")
+                if callback:
+                    callback(True)
             except ImportError as e:
-                self.available = False
-                self._init_error = f"ImportError: {e}"
+                with self._init_lock:
+                    self._loading = False
+                    self.available = False
+                    self._init_error = f"ImportError: {e}"
                 logger.error(f"[OCR] ImportError: {e}")
-                return None
+                if callback:
+                    callback(False)
             except Exception as e:
-                self.available = False
-                self._init_error = str(e)
-                logger.exception(f"[OCR] Exception: {e}")
-                return None
+                with self._init_lock:
+                    self._loading = False
+                    self.available = False
+                    self._init_error = str(e)
+                logger.exception(f"[OCR] Load failed: {e}")
+                if callback:
+                    callback(False)
+
+        thread = threading.Thread(target=_load, daemon=True)
+        thread.start()
+
+    def release(self):
+        with self._init_lock:
+            self._cancel_load = True
+
+            if self._ocr is not None:
+                logger.info("[OCR] Releasing OCR memory...")
+                for name in ('text_detector', 'text_recognizer', 'text_classifier'):
+                    comp = getattr(self._ocr, name, None)
+                    if comp and hasattr(comp, 'predictor'):
+                        try:
+                            comp.predictor.clear_intermediate_tensor()
+                            comp.predictor.try_shrink_memory()
+                        except Exception:
+                            pass
+                self._ocr = None
+                self._loading = False
+                logger.info("[OCR] OCR instance released")
+
+        collected = gc.collect()
+        logger.debug(f"[OCR] GC collected {collected} objects")
+
+    def is_loading(self) -> bool:
+        return self._loading
+
+    def is_loaded(self) -> bool:
+        return self._ocr is not None
 
     def get_init_error(self) -> Optional[str]:
         return self._init_error
@@ -132,11 +182,7 @@ class OCRService:
             return hashlib.md5(str(image).encode()).hexdigest()
 
     def recognize(self, image) -> List[TextBlock]:
-        if not self.available:
-            return []
-
-        ocr = self._init_ocr()
-        if ocr is None:
+        if not self.available or self._ocr is None:
             return []
 
         image_hash = self._compute_image_hash(image)
@@ -161,7 +207,7 @@ class OCRService:
             input_data = img_array
 
         try:
-            result = ocr.ocr(input_data, cls=True)
+            result = self._ocr.ocr(input_data, cls=True)
         except Exception as e:
             logger.error(f"[OCR] 识别失败：{e}")
             return []

@@ -6,6 +6,10 @@ from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QGuiApplication, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from src.utils.logger import get_logger
+
+logger = get_logger("Screenshot")
+
 
 class ConfirmDialog(QDialog):
     def __init__(self, cancel_callback, parent=None):
@@ -46,31 +50,31 @@ class ScreenshotManager:
 
     def start_region_screenshot(self):
         """开始区域截图"""
-        print("Screenshot: Starting region screenshot...")
+        logger.debug("Starting region screenshot...")
         # 隐藏主窗口
         if self.main_window and hasattr(self.main_window, 'isVisible'):
             try:
                 if self.main_window.isVisible():
                     self.main_window.hide()
-                    print("Screenshot: Main window hidden")
+                    logger.debug("Main window hidden")
             except RuntimeError:
                 pass
 
         QTimer.singleShot(300, self._do_region_screenshot)
 
     def _do_region_screenshot(self):
-        print("Screenshot: Creating overlay...")
+        logger.debug("Creating overlay...")
         self.overlay = ScreenshotOverlay('region')
         self.overlay.screenshot_taken.connect(self.on_screenshot_taken)
         self.overlay.cancelled.connect(self.on_screenshot_cancelled)
         self.overlay.showFullScreen()
         self.overlay.activateWindow()
         self.overlay.raise_()
-        print("Screenshot: Overlay shown, visible:", self.overlay.isVisible())
+        logger.debug("Overlay shown, visible: %s", self.overlay.isVisible())
 
     def on_screenshot_cancelled(self):
         """截图取消"""
-        print("Screenshot: Cancelled")
+        logger.debug("Cancelled")
         try:
             if self.confirm_dialog:
                 self.confirm_dialog.close()
@@ -93,7 +97,7 @@ class ScreenshotManager:
 
     def on_screenshot_taken(self, pixmap, rect):
         """截图完成，显示确认对话框"""
-        print(f"Screenshot: Taken, size = {pixmap.width()}x{pixmap.height()}, rect = {rect}")
+        logger.debug("Taken, size = %sx%s, rect = %s", pixmap.width(), pixmap.height(), rect)
         self.current_pixmap = pixmap
         self.current_rect = rect
 
@@ -166,7 +170,7 @@ class ScreenshotManager:
 
     def on_confirm_cancel(self, confirmed):
         """处理确认/取消"""
-        print(f"Screenshot: Confirm = {confirmed}")
+        logger.debug("Confirm = %s", confirmed)
         try:
             if self.confirm_dialog:
                 self.confirm_dialog.close()
@@ -182,7 +186,7 @@ class ScreenshotManager:
             pass
 
         if confirmed and self.current_pixmap:
-            print("Screenshot: Saving to favorites...")
+            logger.debug("Saving to favorites...")
             self.save_to_favorites(self.current_pixmap)
 
         self.current_pixmap = None
@@ -208,7 +212,7 @@ class ScreenshotManager:
 
         # 保存截图
         success = pixmap.save(filepath, "PNG")
-        print(f"Screenshot: Save result = {success}, path = {filepath}")
+        logger.debug("Save result = %s, path = %s", success, filepath)
 
         # 复制到剪贴板
         clipboard = QApplication.clipboard()

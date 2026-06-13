@@ -2,6 +2,7 @@ from PyQt6.QtCore import QPoint, QRect, Qt, QTimer
 from PyQt6.QtWidgets import QMenu, QTextEdit, QVBoxLayout, QWidget
 
 from src.theme import NOTE_COLORS
+from src.utils.geometry import is_horizontal_overlap, is_vertical_overlap
 
 
 class StickyNoteWindow(QWidget):
@@ -292,8 +293,5 @@ class StickyNoteWindow(QWidget):
                 self.is_magnet = True
                 return
 
-    def _is_horizontal_overlap(self, geo1, geo2):
-        return not (geo1.right() < geo2.left() or geo1.left() > geo2.right())
-
-    def _is_vertical_overlap(self, geo1, geo2):
-        return not (geo1.bottom() < geo2.top() or geo1.top() > geo2.bottom())
+    _is_horizontal_overlap = staticmethod(is_horizontal_overlap)
+    _is_vertical_overlap = staticmethod(is_vertical_overlap)

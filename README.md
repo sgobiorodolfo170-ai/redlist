@@ -10,10 +10,13 @@
 
 **运行构建版本**：进入 `dist/RedList/` 双击 `RedList.exe`
 
+> 如启动失败，查看同目录的 `报错日志.md` 了解错误详情。
+
 **从源码运行**：
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pytest           # 运行测试（可选）
 python main.py
 ```
 

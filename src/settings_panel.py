@@ -18,7 +18,10 @@ from PyQt6.QtWidgets import (
 
 
 from src.theme import COLORS
+from src.utils.logger import get_logger
 from src.utils.sound import play_sound
+
+logger = get_logger("SettingsPanel")
 
 
 class SettingsPanel(QWidget):
@@ -249,5 +252,5 @@ class SettingsPanel(QWidget):
             sound_path = os.path.join(sounds_dir, self.alarm_combo.currentText())
             if os.path.exists(sound_path):
                 play_sound(sound_path)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to test sound: %s", e)

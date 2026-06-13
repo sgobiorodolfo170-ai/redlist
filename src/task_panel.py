@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from src.utils.logger import get_logger
 
 from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
@@ -18,6 +19,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+
+logger = get_logger("TaskPanel")
 
 
 class TaskCheckBox(QCheckBox):
@@ -181,7 +185,8 @@ class TaskPanel(QWidget):
                 with open(self.task_file, encoding='utf-8') as f:
                     data = json.load(f)
                     self.tasks = data.get('tasks', [])
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to load tasks from %s: %s", self.task_file, e)
                 self.tasks = []
         else:
             self.tasks = []

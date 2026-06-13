@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.sticky_note.manager import MAX_NOTES
 from src.theme import COLORS, NOTE_COLORS
 
 
@@ -233,7 +234,10 @@ class StickyNotePanel(QWidget):
             self.delete_note(note_id)
 
     def add_note(self):
-        self.manager.create_note()
+        result = self.manager.create_note()
+        if result is None:
+            QMessageBox.warning(self, "提示", f"便签数量已达上限（{MAX_NOTES}条），无法创建新便签")
+            return
         QTimer.singleShot(300, self.load_note_cards)
 
     def toggle_all_notes(self):

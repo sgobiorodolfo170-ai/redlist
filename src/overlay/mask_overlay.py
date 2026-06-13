@@ -1,7 +1,7 @@
 from typing import Any, List, Tuple
 
 from PyQt6.QtCore import QPoint, QRect, Qt, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QFont, QGuiApplication, QPainter, QPen
+from PyQt6.QtGui import QBrush, QColor, QFont, QFontMetrics, QGuiApplication, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QHBoxLayout, QPushButton, QWidget
 
 
@@ -56,21 +56,10 @@ class _BaseMaskOverlay(QWidget):
         self.text_items = items
         self.screenshot_rect = screenshot_rect
 
-    def _extra_font_update(self):
-        pass
-
     # --- shared set_texts ---
 
     def set_texts(self, items, screenshot_rect):
         self._set_text_items(items, screenshot_rect)
-
-        if items and items[0][0].height() > 0:
-            estimated_font_size = max(10, min(items[0][0].height() // 2, 18))
-            self.font_size = estimated_font_size + 1
-        else:
-            self.font_size = 13
-
-        self._extra_font_update()
 
         screens = QGuiApplication.screens()
         if screens:
@@ -182,11 +171,12 @@ class _BaseMaskOverlay(QWidget):
         text_box_rect = self.screenshot_rect.adjusted(1, 1, -1, -1)
         painter.fillRect(text_box_rect, QBrush(self._paint_text_bg_color()))
 
-        text_rect = text_box_rect.adjusted(10, 10, -10, -10)
+        pad = int(max(3, min(10, self.screenshot_rect.height() * 0.08)))
+        text_rect = text_box_rect.adjusted(pad, pad, -pad, -pad)
 
         display_text = self._paint_display_text()
         if text_rect.width() > 0 and text_rect.height() > 0 and display_text:
-            font_size = self._calculate_font_size(text_rect, display_text)
+            font_size = self._fit_font_size(text_rect, display_text)
             painter.setPen(QColor(50, 50, 50))
             font = QFont("Microsoft YaHei", font_size)
             painter.setFont(font)
@@ -194,21 +184,18 @@ class _BaseMaskOverlay(QWidget):
 
     # --- shared helpers ---
 
-    def _calculate_font_size(self, rect, text):
+    def _fit_font_size(self, rect, text):
         if not text:
             return 12
 
-        min_size = 8
-        max_size = 24
-        text_length = len(text)
-        area = rect.width() * rect.height()
-
-        if text_length == 0:
-            return 12
-
-        estimated_size = int((area / text_length) ** 0.5 / 2)
-        estimated_size = max(min_size, min(max_size, estimated_size))
-        return estimated_size
+        font = QFont("Microsoft YaHei")
+        for size in range(22, 7, -1):
+            font.setPointSize(size)
+            fm = QFontMetrics(font)
+            text_rect = fm.boundingRect(rect, Qt.TextFlag.TextWordWrap, text)
+            if text_rect.height() <= rect.height() and text_rect.width() <= rect.width():
+                return size
+        return 8
 
     # --- shared mouse handling ---
 

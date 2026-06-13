@@ -1,5 +1,32 @@
 # Release Notes
 
+## v3.1 (2026-06-11)
+
+代码重构与工程化改进版本。
+
+### 模块重构
+- `screenshot.py` 拆分为 `screenshot/` 包（region_selector / translate_panel / translation_thread）
+- `sticky_note.py` 拆分为 `sticky_note/` 包（manager / window / panel）
+- 公共工具提取到 `src/utils/`：`color.py`（颜色处理）、`geometry.py`（矩形碰撞检测）
+
+### 打包与工程化
+- 优化 `build_final.spec`：`console=False`，排除大型可选依赖，exe 约 150MB
+- 新增 `报错日志.md` 崩溃错误日志机制（写入 exe 所在目录）
+- 新增 `pyproject.toml` 项目元数据 + pytest 配置
+- 新增 `requirements-dev.txt` 开发依赖分离
+- CI 增强：`PYTHONUTF8` 编码、pip 缓存、覆盖率报告
+
+### 新增测试
+- `test_color.py` — 颜色工具函数测试
+- `test_geometry.py` — 矩形碰撞检测测试
+- `test_screenshot_translate.py` — 截图翻译模块测试
+
+### 问题修复
+- 修复 `screenshot.py` 与 `screenshot/` 包同名冲突导致的导入错误
+- 修复死代码崩溃漏洞（deep_merge/remove_none_values）
+- 修复 logger 模式不一致（f-string vs % 格式化）
+- 移除已废弃的 DeepL 翻译服务
+
 ## v3.0 (2026-04-03)
 
 正式版稳定发布。

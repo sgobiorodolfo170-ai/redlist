@@ -2,6 +2,10 @@ import threading
 from functools import wraps
 from typing import Callable, Optional
 
+from src.utils.logger import get_logger
+
+logger = get_logger("Debouncer")
+
 
 class Debouncer:
     def __init__(self, delay_ms: int = 500):
@@ -33,8 +37,8 @@ class Debouncer:
             if self._pending_func is not None:
                 try:
                     self._pending_func(*self._pending_args, **self._pending_kwargs)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.exception("Error in debounced call: %s", e)
                 finally:
                     self._pending_func = None
                     self._pending_args = ()

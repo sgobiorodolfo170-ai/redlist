@@ -7,6 +7,13 @@ from PyQt6.QtGui import QGuiApplication
 
 from src.sticky_note.panel import StickyNotePanel
 from src.sticky_note.window import StickyNoteWindow
+from src.utils.geometry import is_horizontal_overlap, is_vertical_overlap
+from src.utils.logger import get_logger
+
+logger = get_logger("StickyNoteManager")
+
+MAX_NOTES = 500
+MAX_NOTE_TEXT = 10000
 
 
 class StickyNoteManager:
@@ -59,8 +66,13 @@ class StickyNoteManager:
             try:
                 with open(self.notes_file, encoding='utf-8') as f:
                     data = json.load(f)
-                    self.notes = data.get('notes', [])
-            except Exception:
+                    notes = data.get('notes', [])
+                    self.notes = notes[:MAX_NOTES]
+                    for n in self.notes:
+                        if isinstance(n, dict) and 'text' in n:
+                            n['text'] = n['text'][:MAX_NOTE_TEXT]
+            except Exception as e:
+                logger.warning("Failed to load notes from %s: %s", self.notes_file, e)
                 self.notes = []
         else:
             self.notes = []
@@ -92,19 +104,25 @@ class StickyNoteManager:
                 notes_data.append(note)
                 saved_ids.add(note_id)
 
-        self.notes = notes_data
+        self.notes = notes_data[:MAX_NOTES]
+        for n in self.notes:
+            if isinstance(n, dict) and 'text' in n:
+                n['text'] = n['text'][:MAX_NOTE_TEXT]
         Path(self.notes_file).parent.mkdir(parents=True, exist_ok=True)
         with open(self.notes_file, 'w', encoding='utf-8') as f:
-            json.dump({'notes': notes_data}, f, indent=2, ensure_ascii=False)
+            json.dump({'notes': self.notes}, f, indent=2, ensure_ascii=False)
 
     def create_note(self, note_data=None):
+        if len(self.notes) >= MAX_NOTES:
+            logger.warning("Max notes reached (%d), cannot create more", MAX_NOTES)
+            return None
         if note_data:
             if 'id' not in note_data:
                 return None
             note_id = note_data.get('id')
             if not note_id or not isinstance(note_id, str):
                 return None
-            text = note_data.get('text', '')
+            text = note_data.get('text', '')[:MAX_NOTE_TEXT]
             color = note_data.get('color', 'yellow')
             x = note_data.get('x', 100)
             y = note_data.get('y', 100)
@@ -153,6 +171,7 @@ class StickyNoteManager:
             QTimer.singleShot(100, self.panel.load_note_cards)
 
     def update_note_content(self, note_id, text):
+        text = text[:MAX_NOTE_TEXT]
         for note in self.notes:
             if isinstance(note, dict) and note.get('id') == note_id:
                 note['text'] = text
@@ -164,6 +183,9 @@ class StickyNoteManager:
             self.panel.refresh_card_text(note_id, text)
 
     def create_sticky_note(self):
+        if len(self.notes) >= MAX_NOTES:
+            logger.warning("Max notes reached (%d), cannot create more", MAX_NOTES)
+            return None
         note_id = str(uuid.uuid4())
         text = ''
         color = 'yellow'
@@ -437,10 +459,5 @@ class StickyNoteManager:
                     window.magnet_offset = (offset_x, 0)
                     window.is_magnet = True
 
-    @staticmethod
-    def _is_horizontal_overlap(geo1, geo2):
-        return not (geo1.right() < geo2.left() or geo1.left() > geo2.right())
-
-    @staticmethod
-    def _is_vertical_overlap(geo1, geo2):
-        return not (geo1.bottom() < geo2.top() or geo1.top() > geo2.bottom())
+    _is_horizontal_overlap = staticmethod(is_horizontal_overlap)
+    _is_vertical_overlap = staticmethod(is_vertical_overlap)

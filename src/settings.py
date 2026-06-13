@@ -56,7 +56,7 @@ def is_auto_start_enabled() -> bool:
     except ImportError:
         return False
     except Exception as e:
-        logger.debug(f"Failed to check auto start: {e}")
+        logger.warning("Failed to check auto start: %s", e)
         return False
 
 
@@ -70,11 +70,13 @@ class Settings:
         "theme": "light",
         "alarm_sound": "alert-sound-on-mobile-phone.mp3",
         "translate_provider": "baidu_llm",
-        "baidu_app_id": "",
-        "baidu_app_key": "",
+        "baidu_llm_app_id": "",
+        "baidu_llm_app_key": "",
+        "baidu_nmt_app_id": "",
+        "baidu_nmt_app_key": "",
         "tencent_secret_id": "",
         "tencent_secret_key": "",
-        "deepl_api_key": "",
+
         "translate_target_lang": "zh"
     }
 
@@ -95,6 +97,10 @@ class Settings:
                     data = json.load(f)
                     settings = self.DEFAULT_SETTINGS.copy()
                     settings.update(data)
+                    if data.get('baidu_app_id') and not settings['baidu_nmt_app_id']:
+                        settings['baidu_nmt_app_id'] = data['baidu_app_id']
+                    if data.get('baidu_app_key') and not settings['baidu_nmt_app_key']:
+                        settings['baidu_nmt_app_key'] = data['baidu_app_key']
                     return settings
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON in settings file: {e}")
@@ -106,6 +112,8 @@ class Settings:
 
     def save(self) -> None:
         try:
+            self.settings.pop('baidu_app_id', None)
+            self.settings.pop('baidu_app_key', None)
             with open(self.settings_file, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
             self._dirty = False

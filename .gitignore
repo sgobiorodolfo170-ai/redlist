@@ -36,3 +36,7 @@ installer/
 .env
 venv/
 .venv/
+
+# Runtime / logs
+报错日志.md
+.coverage

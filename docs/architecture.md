@@ -5,20 +5,21 @@
 RedList 采用模块化单体架构，各功能模块通过主窗口协调工作。
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   MainWindow                     │
-│  ┌──────────┬──────────┬──────────┬──────────┐  │
-│  │ TaskPanel │ StickyNote│  Timer   │Screenshot│  │
-│  └──────────┴──────────┴──────────┴──────────┘  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │           SettingsPanel                      │ │
-│  └─────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                     MainWindow                         │
+│  ┌──────────┬────────────┬──────────┬──────────────┐  │
+│  │ TaskPanel │  StickyNote │  Timer   │ Screenshot  │  │
+│  │           │  (package)  │          │  (package)  │  │
+│  └──────────┴────────────┴──────────┴──────────────┘  │
+│  ┌───────────────────────────────────────────────────┐ │
+│  │              SettingsPanel                         │ │
+│  └───────────────────────────────────────────────────┘ │
+└───────────────────────────────────────────────────────┘
          │                    │
          ▼                    ▼
   ┌────────────┐     ┌──────────────────┐
   │ OCR Service│     │TranslationService │
-  │ (PaddleOCR)│     │ (Baidu/Tencent)  │
+  │ (PaddleOCR)│     │(Baidu/Tencent)   │
   └────────────┘     └──────────────────┘
 ```
 
@@ -30,39 +31,60 @@ RedList 采用模块化单体架构，各功能模块通过主窗口协调工作
 ### task_panel.py
 待办事项管理面板，支持创建、编辑、删除、标记完成。数据本地持久化。
 
-### sticky_note.py
-桌面便签模块，支持磁吸到屏幕边缘和自定义样式。
+### sticky_note/ (package)
+桌面便签模块。包含 `manager.py`（管理器）、`window.py`（窗口）、`panel.py`（设置面板）。支持磁吸到屏幕边缘和自定义样式。
 
 ### timer.py
 定时器模块，支持倒计时和到期提醒播放提示音。
 
-### screenshot.py
-截图模块，使用 mss 库捕获屏幕，支持区域选择和保存。
+### screenshot/ (package)
+截图模块。包含 `screenshot_manager.py`（原 `screenshot_legacy.py` 中的 `ScreenshotManager`）、`translate_panel.py`（截图翻译面板）、`region_selector.py`（区域选择器）、`translation_thread.py`（翻译线程）。
 
-### screenshot_translate.py
-截图翻译模块，串联截图 → OCR 识别 → 翻译 API 调用 → 结果显示的完整流程。
+### screenshot_translate.py -> screenshot/translate_panel.py
+`src/screenshot_translate.py` 现为向后兼容的 re-export 模块。截图翻译的核心逻辑已迁移到 `src/screenshot/translate_panel.py`。
 
 ### ocr/
-OCR 服务层，封装 PaddleOCR，提供统一的文字识别接口。
+OCR 服务层，封装 PaddleOCR（延迟加载，首次使用时初始化），提供统一的文字识别接口。
 
 ### translation/
-翻译服务抽象层，统一接口支持多服务商切换（百度大模型、百度通用、腾讯翻译）。
+翻译服务抽象层，统一接口支持多服务商切换（百度大模型、百度通用、腾讯翻译）。通过 `TranslationService` 单例管理。
 
 ### overlay/
-屏幕覆盖层窗口，用于截图区域的遮罩和交互选取。
+屏幕覆盖层窗口，用于截图区域的遮罩和交互选取。包含 `mask_overlay.py`（文字遮罩）和 `overlay_window.py`（通用覆盖窗口）。
+
+### utils/
+通用工具模块：
+- `geometry.py` — 矩形重叠检测（`is_horizontal_overlap` / `is_vertical_overlap`），提取自 sticky_note
+- `color.py` — 颜色处理（`lighten_color` / `darken_color`），提取自 translate_panel
+- `cache.py` — LRU 缓存 + TTL，用于 OCR 和翻译结果缓存
+- `debounce.py` — 防抖执行器，用于配置自动保存
+- `logger.py` — 日志配置，统一的日志输出格式
+- `sound.py` — 系统提示音播放（基于 winmm）
+
+### settings.py
+配置管理。使用 `%APPDATA%/RedList/settings.json` 持久化，含防抖自动保存。
 
 ## 数据流
 
 ### 截图翻译流程
 
 ```
-用户触发截图 → 选择区域 → OCR 识别文字
-    → 选择翻译服务 → 调用 API → 显示结果
+用户触发截图 → RegionSelector 区域选择
+    → mss 截图 → OCR 识别文字 → TranslationThread 异步翻译
+    → MaskTranslationOverlay 显示结果
 ```
 
 ### 配置存储流程
 
 ```
-设置界面修改 → 加密存储到 settings.json
+设置界面修改 → Debouncer (500ms) 防抖 → settings.json
     → 应用启动时自动加载
+```
+
+### 运行模式
+
+```
+源码运行: main.py → QApplication → MainWindow → 各 Panel
+打包运行: RedList.exe → sys._MEIPASS 资源路径 → 同上
+          崩溃时自动生成 报错日志.md
 ```

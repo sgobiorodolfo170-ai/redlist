@@ -3,7 +3,10 @@ import sys
 
 from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QIcon
-from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QPushButton, QStackedLayout, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QApplication, QFrame, QHBoxLayout, QLabel, QMenu, QPushButton, QStackedLayout,
+    QSystemTrayIcon, QVBoxLayout, QWidget,
+)
 
 from src.theme import COLORS
 from src.translation.translation_service import TranslationService
@@ -52,6 +55,8 @@ class MainWindow(QWidget):
         self._show_timer = None
 
         self.init_ui()
+
+        self._setup_tray_icon()
 
         self._init_panels_timer = QTimer()
         self._init_panels_timer.setSingleShot(True)
@@ -133,17 +138,52 @@ class MainWindow(QWidget):
 
         self.stack_layout.setCurrentIndex(0)
 
-        self.setFixedSize(320, 500)
+        self.setFixedSize(480, 760)
         self.move_to_right()
 
-    def _set_window_icon(self):
+    def _get_icon_path(self):
         if getattr(sys, 'frozen', False):
             base_path = sys._MEIPASS
         else:
             base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        icon_path = os.path.join(base_path, 'app-icons', 'RedList.ico')
+        return os.path.join(base_path, 'app-icons', 'RedList.ico')
+
+    def _set_window_icon(self):
+        icon_path = self._get_icon_path()
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
+
+    def _setup_tray_icon(self):
+        icon_path = self._get_icon_path()
+        if not os.path.exists(icon_path):
+            self.tray_icon = None
+            return
+        self.tray_icon = QSystemTrayIcon(QIcon(icon_path), self)
+        menu = QMenu()
+        show_action = menu.addAction("显示主窗口")
+        show_action.triggered.connect(self.show_window)
+        menu.addSeparator()
+        quit_action = menu.addAction("退出")
+        quit_action.triggered.connect(self.quit_application)
+        self.tray_icon.setContextMenu(menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.show()
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self.show_window()
+
+    def show_window(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        self._start_timers()
+        if self.screenshot_translate_panel and self.current_tool == 'translate':
+            self.screenshot_translate_panel.load_ocr()
+
+    def quit_application(self):
+        self._do_cleanup()
+        QApplication.quit()
 
     def create_title_bar(self):
         title_bar = QFrame()
@@ -275,6 +315,8 @@ class MainWindow(QWidget):
         return toolbar
 
     def switch_tool(self, tool_id):
+        previous_tool = self.current_tool
+
         for btn in self.tool_buttons.values():
             btn.setChecked(False)
         self.tool_buttons[tool_id].setChecked(True)
@@ -283,6 +325,12 @@ class MainWindow(QWidget):
         if self.stack_layout.count() > tool_index:
             self.stack_layout.setCurrentIndex(tool_index)
         self.current_tool = tool_id
+
+        if self.screenshot_translate_panel:
+            if previous_tool == 'translate' and tool_id != 'translate':
+                self.screenshot_translate_panel.release_ocr()
+            elif tool_id == 'translate':
+                self.screenshot_translate_panel.load_ocr()
 
     def start_screenshot(self):
         if self.screenshot_mgr:
@@ -302,31 +350,43 @@ class MainWindow(QWidget):
         QTimer.singleShot(500, lambda: setattr(self, 'dock_enabled', True))
 
     def closeEvent(self, event):
+        if self.tray_icon and self.tray_icon.isVisible():
+            logger.info("MainWindow hiding to tray")
+            self._stop_timers()
+            if self.screenshot_translate_panel:
+                self.screenshot_translate_panel.release_ocr()
+            self.settings.flush()
+            self.hide()
+            event.ignore()
+        else:
+            self._do_cleanup()
+            event.accept()
+
+    def _do_cleanup(self):
         logger.info("MainWindow closing, cleaning up resources...")
 
         self._stop_timers()
 
         if self.task_panel and hasattr(self.task_panel, 'closeEvent'):
-            self.task_panel.closeEvent(event)
+            self.task_panel.closeEvent(None)
         if self.screenshot_mgr and hasattr(self.screenshot_mgr, 'get_panel'):
             panel = self.screenshot_mgr.get_panel()
             if hasattr(panel, 'closeEvent'):
-                panel.closeEvent(event)
+                panel.closeEvent(None)
         if self.sticky_mgr:
             self.sticky_mgr.cleanup()
         if self.timer_panel and hasattr(self.timer_panel, 'closeEvent'):
-            self.timer_panel.closeEvent(event)
-        if self.screenshot_translate_panel and hasattr(self.screenshot_translate_panel, 'closeEvent'):
-            self.screenshot_translate_panel.closeEvent(event)
+            self.timer_panel.closeEvent(None)
+        if self.screenshot_translate_panel:
+            self.screenshot_translate_panel.release_ocr()
+            if hasattr(self.screenshot_translate_panel, 'closeEvent'):
+                self.screenshot_translate_panel.closeEvent(None)
         if self.settings_panel and hasattr(self.settings_panel, 'closeEvent'):
-            self.settings_panel.closeEvent(event)
+            self.settings_panel.closeEvent(None)
 
         self.settings.flush()
-
         TranslationService.cleanup()
-
         logger.info("Application exiting")
-        QApplication.quit()
 
     def _stop_timers(self):
         self.hide_timer.stop()
