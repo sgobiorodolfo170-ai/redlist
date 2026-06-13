@@ -263,7 +263,6 @@ class MainWindow(QWidget):
             ('note', '📝', '便利贴'),
             ('timer', '⏱', '定时器'),
             ('translate', '🔤', '翻译'),
-            ('settings', '⚙', '设置')
         ]
 
         self.tool_buttons = {}
@@ -291,12 +290,29 @@ class MainWindow(QWidget):
             layout.addWidget(btn)
             self.tool_buttons[tool_id] = btn
 
-        layout.addStretch()
-
         screenshot_btn = QPushButton('📷')
         screenshot_btn.setFixedSize(40, 40)
         screenshot_btn.setToolTip("截图")
-        screenshot_btn.setStyleSheet("""
+        screenshot_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                font-size: 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['hover']};
+            }}
+        """)
+        screenshot_btn.clicked.connect(self.start_screenshot)
+        layout.addWidget(screenshot_btn)
+
+        layout.addStretch()
+
+        settings_btn = QPushButton('⚙')
+        settings_btn.setFixedSize(40, 40)
+        settings_btn.setToolTip("设置")
+        settings_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 border: none;
@@ -307,8 +323,8 @@ class MainWindow(QWidget):
                 background-color: #D5DBDB;
             }
         """)
-        screenshot_btn.clicked.connect(self.start_screenshot)
-        layout.addWidget(screenshot_btn)
+        settings_btn.clicked.connect(lambda: self.switch_tool('settings'))
+        layout.addWidget(settings_btn)
 
         self.tool_buttons['task'].setChecked(True)
 
