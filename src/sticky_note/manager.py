@@ -5,14 +5,14 @@ from pathlib import Path
 from PyQt6.QtCore import QPoint, QRect, Qt, QTimer
 from PyQt6.QtGui import QGuiApplication
 
+MAX_NOTES = 500
+
 from src.sticky_note.panel import StickyNotePanel
 from src.sticky_note.window import StickyNoteWindow
 from src.utils.geometry import is_horizontal_overlap, is_vertical_overlap
 from src.utils.logger import get_logger
 
 logger = get_logger("StickyNoteManager")
-
-MAX_NOTES = 500
 MAX_NOTE_TEXT = 10000
 
 

@@ -4,7 +4,7 @@
 
 ## 功能
 
-任务管理 · 桌面便签 · 定时器 · 截图 · 截图翻译（OCR + 多语言翻译）
+任务管理 · 桌面便签 · 定时器 · 截图 · 截图翻译（OCR + 多语言翻译）· LLM 对话（自定义模型 + 流式输出）
 
 ## 快速开始
 
@@ -28,6 +28,7 @@ python main.py
 | [开发者指南](docs/developer-guide.md) | 技术栈、项目结构、构建和扩展 |
 | [架构说明](docs/architecture.md) | 模块关系、数据流 |
 | [发布说明](docs/release-notes.md) | 版本历史和更新日志 |
+| [LLM 对话](./docs/llm-chat.md) | LLM 对话模块功能与配置说明 |
 
 ## 许可证
 

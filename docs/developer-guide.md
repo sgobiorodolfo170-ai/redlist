@@ -6,6 +6,7 @@
 |------|------|
 | Python 3.8+ | 核心编程语言 |
 | PyQt6 6.6.1 | GUI 框架 |
+| OpenAI API (兼容) | LLM 对话 API 调用 |
 | PaddlePaddle 2.6.1 | 深度学习框架（OCR 引擎后端，延迟加载） |
 | PaddleOCR 2.9.1 | 光学字符识别 |
 | Pillow | 图像处理 |
@@ -46,6 +47,17 @@
 │   ├── translation/
 │   │   ├── __init__.py
 │   │   └── translation_service.py  # 翻译服务抽象（百度/腾讯）
+│   ├── llm_chat/           # LLM 对话模块（包）
+│   │   ├── __init__.py
+│   │   ├── chat_panel.py       # 对话主面板（QSplitter 左右分栏）
+│   │   ├── chat_display.py     # 气泡消息展示区（Markdown + 代码块 + 工具栏）
+│   │   ├── conversation_list.py # 左侧会话列表
+│   │   ├── input_bar.py        # 输入栏（多行 QTextEdit + 模型/专家选择）
+│   │   ├── llm_service.py      # QThread 流式调用 OpenAI 兼容 API
+│   │   ├── conversation_manager.py # 会话 JSON 持久化
+│   │   ├── model_dialog.py     # 自定义模型弹窗
+│   │   ├── prompt_expert_dialog.py # 自定义提示词专家弹窗
+│   │   └── chinese_menu.py     # 中文右击菜单工具函数
 │   ├── ocr/
 │   │   ├── __init__.py
 │   │   └── ocr_service.py   # OCR 服务（PaddleOCR，延迟加载）
@@ -97,6 +109,38 @@ pyinstaller build_final.spec
 ```
 
 构建后的可执行文件位于 `dist/RedList/RedList.exe`，约 150MB（不含 PaddleOCR 模型，首次运行时自动下载）。
+
+> 注意：`build_final.spec` 中 `hiddenimports` 需包含 `src.llm_chat` 及其子模块。构建超时建议 ≥ 600s。
+
+## LLM 对话模块
+
+### 自定义模型提供商
+
+模型信息存储在 `settings.json` 的 `llm_providers` 字段，支持任意 OpenAI 兼容 API：
+- URL（API 端点）
+- API Key
+- 模型名称（如 gpt-4o、deepseek-chat）
+
+通过 🤖 面板的「模型选择」→「✚ 自定义」添加。
+
+### 提示词专家
+
+`prompt_experts` 字段存储自定义 system prompt，选中后自动注入 messages。
+
+### 会话持久化
+
+```
+%APPDATA%/RedList/conversations/
+├── <conv_id>.json     # 单条会话（messages 列表）
+```
+
+### 关键约定
+
+- 流式输出: QThread + SSE 逐行解析，`accumulated_text` 追踪全文
+- 气泡高度: `document().setTextWidth(text_width)` → `size().height() + padding`
+- 助手气泡底部工具栏: 复制/导出 Markdown/重新生成（仅最后一条）
+- 回车发送 / Shift+Enter 换行，发送后自动聚焦输入框
+- 中文右击菜单: `createStandardContextMenu()` + `chinese_menu.py` 翻译
 
 ## 配置与调试
 

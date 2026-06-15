@@ -49,6 +49,7 @@ class MainWindow(QWidget):
         self.sticky_mgr = None
         self.timer_panel = None
         self.screenshot_translate_panel = None
+        self.chat_panel = None
         self.settings_panel = None
 
         self._hide_timer = None
@@ -74,6 +75,7 @@ class MainWindow(QWidget):
         from src.sticky_note.manager import StickyNoteManager
         from src.task_panel import TaskPanel
         from src.timer import TimerPanel
+        from src.llm_chat.chat_panel import ChatPanel
 
         try:
             self.task_panel = TaskPanel(self.settings)
@@ -91,6 +93,9 @@ class MainWindow(QWidget):
 
             self.screenshot_translate_panel = ScreenshotTranslatePanel(self.settings, self.sticky_mgr, self)
             self.stack_layout.addWidget(self.screenshot_translate_panel)
+
+            self.chat_panel = ChatPanel(self.settings, self)
+            self.stack_layout.addWidget(self.chat_panel)
 
             self.settings_panel = SettingsPanel(self.settings, self)
             self.stack_layout.addWidget(self.settings_panel)
@@ -307,24 +312,53 @@ class MainWindow(QWidget):
         screenshot_btn.clicked.connect(self.start_screenshot)
         layout.addWidget(screenshot_btn)
 
-        layout.addStretch()
-
-        settings_btn = QPushButton('⚙')
-        settings_btn.setFixedSize(40, 40)
-        settings_btn.setToolTip("设置")
-        settings_btn.setStyleSheet("""
-            QPushButton {
+        chat_btn = QPushButton('🤖')
+        chat_btn.setFixedSize(40, 40)
+        chat_btn.setCheckable(True)
+        chat_btn.setToolTip("大模型对话")
+        chat_btn.setStyleSheet(f"""
+            QPushButton {{
                 background-color: transparent;
                 border: none;
                 border-radius: 4px;
                 font-size: 18px;
-            }
-            QPushButton:hover {
-                background-color: #D5DBDB;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['hover']};
+            }}
+            QPushButton:checked {{
+                background-color: {COLORS['primary']};
+                color: white;
+            }}
+        """)
+        chat_btn.clicked.connect(lambda: self.switch_tool('chat'))
+        layout.addWidget(chat_btn)
+        self.tool_buttons['chat'] = chat_btn
+
+        layout.addStretch()
+
+        settings_btn = QPushButton('⚙')
+        settings_btn.setFixedSize(40, 40)
+        settings_btn.setCheckable(True)
+        settings_btn.setToolTip("设置")
+        settings_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                font-size: 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORS['hover']};
+            }}
+            QPushButton:checked {{
+                background-color: {COLORS['primary']};
+                color: white;
+            }}
         """)
         settings_btn.clicked.connect(lambda: self.switch_tool('settings'))
         layout.addWidget(settings_btn)
+        self.tool_buttons['settings'] = settings_btn
 
         self.tool_buttons['task'].setChecked(True)
 
@@ -337,10 +371,13 @@ class MainWindow(QWidget):
             btn.setChecked(False)
         self.tool_buttons[tool_id].setChecked(True)
 
-        tool_index = ['task', 'note', 'timer', 'translate', 'settings'].index(tool_id)
+        tool_index = ['task', 'note', 'timer', 'translate', 'chat', 'settings'].index(tool_id)
         if self.stack_layout.count() > tool_index:
             self.stack_layout.setCurrentIndex(tool_index)
         self.current_tool = tool_id
+
+        if self.chat_panel and tool_id == 'chat':
+            self.chat_panel.conv_list.load_conversations()
 
         if self.screenshot_translate_panel:
             if previous_tool == 'translate' and tool_id != 'translate':
@@ -397,6 +434,10 @@ class MainWindow(QWidget):
             self.screenshot_translate_panel.release_ocr()
             if hasattr(self.screenshot_translate_panel, 'closeEvent'):
                 self.screenshot_translate_panel.closeEvent(None)
+        if self.chat_panel and self.chat_panel.llm_service and self.chat_panel.llm_service.isRunning():
+            self.chat_panel.llm_service.cancel()
+            self.chat_panel.llm_service.quit()
+            self.chat_panel.llm_service.wait(1000)
         if self.settings_panel and hasattr(self.settings_panel, 'closeEvent'):
             self.settings_panel.closeEvent(None)
 

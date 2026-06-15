@@ -77,7 +77,10 @@ class Settings:
         "tencent_secret_id": "",
         "tencent_secret_key": "",
 
-        "translate_target_lang": "zh"
+        "translate_target_lang": "zh",
+
+        "llm_providers": [],
+        "prompt_experts": [],
     }
 
     SAVE_DELAY_MS = 500

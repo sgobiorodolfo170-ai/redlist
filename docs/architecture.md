@@ -7,10 +7,10 @@ RedList 采用模块化单体架构，各功能模块通过主窗口协调工作
 ```
 ┌───────────────────────────────────────────────────────┐
 │                     MainWindow                         │
-│  ┌──────────┬────────────┬──────────┬──────────────┐  │
-│  │ TaskPanel │  StickyNote │  Timer   │ Screenshot  │  │
-│  │           │  (package)  │          │  (package)  │  │
-│  └──────────┴────────────┴──────────┴──────────────┘  │
+│  ┌──────────┬────────────┬──────────┬──────────────┬──────────────┐  │
+│  │ TaskPanel │  StickyNote │  Timer   │ Screenshot  │  LLM Chat   │  │
+│  │           │  (package)  │          │  (package)  │  (package)  │  │
+│  └──────────┴────────────┴──────────┴──────────────┴──────────────┘  │
 │  ┌───────────────────────────────────────────────────┐ │
 │  │              SettingsPanel                         │ │
 │  └───────────────────────────────────────────────────┘ │
@@ -36,6 +36,9 @@ RedList 采用模块化单体架构，各功能模块通过主窗口协调工作
 
 ### timer.py
 定时器模块，支持倒计时和到期提醒播放提示音。
+
+### llm_chat/ (package)
+LLM 对话模块。包含 `chat_panel.py`（主面板，QSplitter 左右分栏）、`chat_display.py`（气泡消息展示，Markdown/代码块渲染、工具栏）、`conversation_list.py`（左侧会话列表）、`input_bar.py`（多行输入栏 + 模型/专家选择）、`llm_service.py`（QThread 流式调用 OpenAI 兼容 API）、`conversation_manager.py`（会话 JSON 持久化）、`model_dialog.py` / `prompt_expert_dialog.py`（自定义弹窗）、`chinese_menu.py`（中文右击菜单）。
 
 ### screenshot/ (package)
 截图模块。包含 `screenshot_manager.py`（原 `screenshot_legacy.py` 中的 `ScreenshotManager`）、`translate_panel.py`（截图翻译面板）、`region_selector.py`（区域选择器）、`translation_thread.py`（翻译线程）。
@@ -68,6 +71,16 @@ OCR 服务层，封装 PaddleOCR（延迟加载，首次使用时初始化），
 配置管理。使用 `%APPDATA%/RedList/settings.json` 持久化，含防抖自动保存。
 
 ## 数据流
+
+### LLM 对话流程
+
+```
+用户输入文本 + 可选截图 → ChatPanel 构建 API messages
+    → LLMService (QThread) 流式调用 OpenAI 兼容 API
+    → ChatDisplay.update_temp_bubble 逐字渲染
+    → 完成后 finalize_temp_bubble 显示工具栏（复制/导出/重新生成）
+    → ConversationManager 持久化到 JSON
+```
 
 ### 截图翻译流程
 

@@ -1,8 +1,21 @@
 # Release Notes
 
-## v3.2 (2026-06-13)
+## v3.2 (2026-06-15)
 
-ORM 生命周期管理与内存优化版本。
+LLM 对话模块发布版本，同时包含 ORM 生命周期管理与内存优化。
+
+### 新增功能
+- **LLM 对话面板**：截图+大模型对话选项卡，支持自定义模型提供商（URL + API Key + 模型名称）
+- **自定义提示词专家**：用户自定义 system prompt，选中后自动注入
+- **流式输出**：逐字显示模型回复，支持 Markdown + 代码块渲染
+- **会话管理**：左侧会话列表，支持新建/重命名/删除，本地 JSON 持久化
+- **助手气泡工具栏**：复制、导出为 Markdown、重新生成（仅对最后一条消息有效）
+- **中文右击菜单**：QTextEdit/QLineEdit 原生中文菜单（撤销/重做/剪切/复制/粘贴/删除/全选）
+- **输入框自动聚焦**：发送后自动回到输入框，按 Enter 发送 / Shift+Enter 换行
+
+### 架构变更
+- 新建 `src/llm_chat/` 包，包含 10 个模块
+- 主窗口新增 🤖 工具按钮，注册 ChatPanel
 
 ### 内存管理
 - OCR 服务生命周期管理：延迟加载 + 主动释放资源，避免内存泄漏
@@ -19,6 +32,17 @@ ORM 生命周期管理与内存优化版本。
 - 修复潜在死代码崩溃漏洞
 - 统一日志格式化（% 格式化）
 - 新增 pre-commit 配置（代码质量检查）
+
+### 问题修复
+- 修复 main_window.py 中 settings_btn 未注册导致的 KeyError
+- 修复 sticky_note/manager.py 中 MAX_NOTES 循环导入
+- 修复 input_bar.py `reload_providers()` blockSignals 永不释放
+- 修复 model_combo/expert_combo 选择 "✚ 自定义..." 无响应
+- 修复 chat_display.py 切换会话时 `update_temp_bubble` RuntimeError
+- 修复 settings 不保存（list() 拷贝避免同引用比较提前 return）
+- 修复流式响应空数组 `IndexError`
+- 修复 `llm_service.py` 四个 bug：会话切换污染、response 泄漏、错误体暴露、流式超时
+- 修复流式气泡 `_raw_text` 未初始化导致的 AttributeError
 
 ## v3.1 (2026-06-11)
 
