@@ -3,11 +3,21 @@ import re
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QTextBlockFormat, QTextCursor
 from PyQt6.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QTextBrowser, QVBoxLayout, QWidget,
+    QApplication,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.theme import COLORS
+from src.utils.logger import get_logger
+
+logger = get_logger("ChatDisplay")
 
 
 class ChatDisplay(QScrollArea):
@@ -64,13 +74,13 @@ class ChatDisplay(QScrollArea):
         self.collapse_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: rgba(248,249,250,200);
-                color: {COLORS['text_secondary']};
+                color: {COLORS["text_secondary"]};
                 border: 1px solid #E9ECEF;
                 border-radius: 4px;
                 font-size: 12px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
         """)
         self.collapse_btn.clicked.connect(self.on_toggle_collapse)
@@ -80,7 +90,7 @@ class ChatDisplay(QScrollArea):
         self.welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.welcome_label.setStyleSheet(f"""
             font-size: 14px;
-            color: {COLORS['text_secondary']};
+            color: {COLORS["text_secondary"]};
             background: transparent;
             padding: 40px;
         """)
@@ -98,7 +108,7 @@ class ChatDisplay(QScrollArea):
         self.welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.welcome_label.setStyleSheet(f"""
             font-size: 14px;
-            color: {COLORS['text_secondary']};
+            color: {COLORS["text_secondary"]};
             background: transparent;
             padding: 40px;
         """)
@@ -108,8 +118,8 @@ class ChatDisplay(QScrollArea):
         self.clear_messages()
         self.welcome_label.hide()
         for msg in messages:
-            role = msg.get('role', 'user')
-            content = msg.get('content', '')
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
             self.append_message(role, content)
 
     def _bubble_width(self):
@@ -129,13 +139,13 @@ class ChatDisplay(QScrollArea):
         bubble._padding_top = padding_v
         bubble._padding_bottom = padding_v
 
-        if role == 'user':
+        if role == "user":
             max_w = self._bubble_width()
             bubble.setMaximumWidth(max_w)
             bubble._text_width = max_w - 24
             bubble.setStyleSheet(f"""
                 QTextBrowser {{
-                    background-color: {COLORS['primary']};
+                    background-color: {COLORS["primary"]};
                     color: white;
                     border: none;
                     border-radius: 8px;
@@ -148,7 +158,7 @@ class ChatDisplay(QScrollArea):
             bubble.setStyleSheet(f"""
                 QTextBrowser {{
                     background-color: #FFFFFF;
-                    color: {COLORS['text_primary']};
+                    color: {COLORS["text_primary"]};
                     border: 1px solid #E9ECEF;
                     border-radius: 8px;
                     padding: {padding_v}px 12px;
@@ -158,10 +168,10 @@ class ChatDisplay(QScrollArea):
         return bubble
 
     def _set_bubble_height(self, bubble):
-        w = getattr(bubble, '_text_width', self.viewport().width() - 50)
+        w = getattr(bubble, "_text_width", self.viewport().width() - 50)
         bubble.document().setTextWidth(w)
-        padding_top = getattr(bubble, '_padding_top', 0)
-        padding_bottom = getattr(bubble, '_padding_bottom', 0)
+        padding_top = getattr(bubble, "_padding_top", 0)
+        padding_bottom = getattr(bubble, "_padding_bottom", 0)
         h = bubble.document().size().height() + padding_top + padding_bottom
         h = max(h, 40)
         bubble.setFixedHeight(int(h))
@@ -233,12 +243,10 @@ class ChatDisplay(QScrollArea):
     def _on_export_md(self, text):
         if not isinstance(text, str):
             return
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "导出为 Markdown", "untitled.md", "Markdown (*.md)"
-        )
+        file_path, _ = QFileDialog.getSaveFileName(self, "导出为 Markdown", "untitled.md", "Markdown (*.md)")
         if file_path:
             try:
-                with open(file_path, 'w', encoding='utf-8') as f:
+                with open(file_path, "w", encoding="utf-8") as f:
                     f.write(text)
             except Exception:
                 pass
@@ -262,14 +270,14 @@ class ChatDisplay(QScrollArea):
 
         hwrapper = QHBoxLayout()
         hwrapper.setContentsMargins(0, 0, 0, 0)
-        if role == 'user':
+        if role == "user":
             hwrapper.addStretch()
             hwrapper.addWidget(bubble)
         else:
             hwrapper.addWidget(bubble)
         wrapper.addLayout(hwrapper)
 
-        if role == 'assistant':
+        if role == "assistant":
             toolbar = self._make_toolbar(bubble)
             wrapper.addWidget(toolbar)
 
@@ -298,14 +306,14 @@ class ChatDisplay(QScrollArea):
 
         hwrapper = QHBoxLayout()
         hwrapper.setContentsMargins(0, 0, 0, 0)
-        if role == 'user':
+        if role == "user":
             hwrapper.addStretch()
             hwrapper.addWidget(self.temp_bubble)
         else:
             hwrapper.addWidget(self.temp_bubble)
         wrapper.addLayout(hwrapper)
 
-        if role == 'assistant':
+        if role == "assistant":
             self.temp_toolbar = self._make_toolbar(self.temp_bubble)
             self.temp_toolbar.hide()
             wrapper.addWidget(self.temp_toolbar)
@@ -331,6 +339,7 @@ class ChatDisplay(QScrollArea):
             self._set_bubble_height(self.temp_bubble)
             self.scroll_to_bottom()
         except RuntimeError:
+            logger.warning("RuntimeError in update_temp_bubble")
             self.temp_bubble = None
 
     def finalize_temp_bubble(self):
@@ -352,38 +361,37 @@ class ChatDisplay(QScrollArea):
             scrollbar.setValue(scrollbar.maximum())
 
     def _format_content(self, text):
-        text = text.replace('\r\n', '\n').replace('\r', '\n')
-        text = text.strip('\n')
-        text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        text = text.replace('\n', '<br>')
-        code_block_pattern = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        text = text.strip("\n")
+        text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        text = text.replace("\n", "<br>")
+        code_block_pattern = re.compile(r"```(\w*)\n(.*?)```", re.DOTALL)
         text = code_block_pattern.sub(self._replace_code_block, text)
-        inline_code = re.compile(r'`([^`]+)`')
+        inline_code = re.compile(r"`([^`]+)`")
         text = inline_code.sub(
-            r'<code style="background:#E8E8E8;padding:2px 6px;border-radius:4px;font-size:12px;">\1</code>',
-            text
+            r'<code style="background:#E8E8E8;padding:2px 6px;border-radius:4px;font-size:12px;">\1</code>', text
         )
-        bold = re.compile(r'\*\*(.+?)\*\*')
-        text = bold.sub(r'<b>\1</b>', text)
+        bold = re.compile(r"\*\*(.+?)\*\*")
+        text = bold.sub(r"<b>\1</b>", text)
         return f"<div style='margin:0;padding:0;'>{text}</div>"
 
     def _replace_code_block(self, match):
-        lang = match.group(1) or ''
+        lang = match.group(1) or ""
         code = match.group(2)
-        code = code.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
-        escaped_code = code.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        lang_label = f'<div style="font-size:11px;color:#7F8C8D;margin-bottom:4px;">{lang}</div>' if lang else ''
+        code = code.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+        escaped_code = code.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        lang_label = f'<div style="font-size:11px;color:#7F8C8D;margin-bottom:4px;">{lang}</div>' if lang else ""
         return (
             f'<div style="background:#2C3E50;color:#ECF0F1;border-radius:6px;padding:10px;'
             f'margin:8px 0;font-family:Consolas,monospace;font-size:12px;white-space:pre-wrap;">'
-            f'{lang_label}{escaped_code}</div>'
+            f"{lang_label}{escaped_code}</div>"
         )
 
     def _format_multimodal(self, content_parts):
-        text = ''
+        text = ""
         for part in content_parts:
-            if part.get('type') == 'text':
-                text += part.get('text', '')
-            elif part.get('type') == 'image_url':
-                text += '[图片]'
+            if part.get("type") == "text":
+                text += part.get("text", "")
+            elif part.get("type") == "image_url":
+                text += "[图片]"
         return self._format_content(text)

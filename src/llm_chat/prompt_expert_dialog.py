@@ -1,7 +1,13 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-    QPushButton, QTextEdit, QVBoxLayout,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
 )
 
 from src.llm_chat.chinese_menu import _setup_chinese_context_menu
@@ -25,7 +31,7 @@ class PromptExpertDialog(QDialog):
                 border-radius: 8px;
             }}
             QLabel {{
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
             }}
             QLineEdit {{
@@ -33,11 +39,11 @@ class PromptExpertDialog(QDialog):
                 border-radius: 6px;
                 padding: 8px 10px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 background-color: #F8F9FA;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
                 background-color: white;
             }}
             QTextEdit {{
@@ -45,11 +51,11 @@ class PromptExpertDialog(QDialog):
                 border-radius: 6px;
                 padding: 8px 10px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 background-color: #F8F9FA;
             }}
             QTextEdit:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
                 background-color: white;
             }}
         """)
@@ -68,7 +74,7 @@ class PromptExpertDialog(QDialog):
 
         self.name_edit = QLineEdit()
         self.name_edit.setPlaceholderText("例如：翻译专家、代码审查专家")
-        self.name_edit.setText(self.edit_data.get('name', '') if self.edit_data else '')
+        self.name_edit.setText(self.edit_data.get("name", "") if self.edit_data else "")
         _setup_chinese_context_menu(self.name_edit)
         layout.addWidget(self.name_edit)
 
@@ -81,7 +87,7 @@ class PromptExpertDialog(QDialog):
         self.prompt_edit.setMinimumHeight(120)
         _setup_chinese_context_menu(self.prompt_edit)
         if self.edit_data:
-            self.prompt_edit.setPlainText(self.edit_data.get('system_prompt', ''))
+            self.prompt_edit.setPlainText(self.edit_data.get("system_prompt", ""))
         layout.addWidget(self.prompt_edit)
 
         btn_layout = QHBoxLayout()
@@ -91,14 +97,14 @@ class PromptExpertDialog(QDialog):
         cancel_btn.setFixedSize(80, 32)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
+                background-color: {COLORS["background"]};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 6px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
         """)
         cancel_btn.clicked.connect(self.reject)
@@ -108,7 +114,7 @@ class PromptExpertDialog(QDialog):
         save_btn.setFixedSize(80, 32)
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 6px;

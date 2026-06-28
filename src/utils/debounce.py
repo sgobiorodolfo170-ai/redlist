@@ -1,5 +1,4 @@
 import threading
-from functools import wraps
 from typing import Callable, Optional
 
 from src.utils.logger import get_logger
@@ -25,10 +24,7 @@ class Debouncer:
             self._pending_args = args
             self._pending_kwargs = kwargs
 
-            self._timer = threading.Timer(
-                self.delay_ms / 1000.0,
-                self._execute
-            )
+            self._timer = threading.Timer(self.delay_ms / 1000.0, self._execute)
             self._timer.daemon = True
             self._timer.start()
 
@@ -53,18 +49,3 @@ class Debouncer:
     def flush(self) -> None:
         self.cancel()
         self._execute()
-
-
-def debounce(delay_ms: int = 500):
-    debouncer = Debouncer(delay_ms)
-
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            debouncer.call(func, *args, **kwargs)
-
-        wrapper.cancel = debouncer.cancel
-        wrapper.flush = debouncer.flush
-        return wrapper
-
-    return decorator

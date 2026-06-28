@@ -1,25 +1,15 @@
 import gc
 import hashlib
 import os
-import sys
 import threading
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional
 
-os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
-
-try:
-    from PIL import Image
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
-    Image = None
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 try:
     import numpy as np
-    HAS_NUMPY = True
 except ImportError:
-    HAS_NUMPY = False
     np = None
 
 from src.utils.cache import get_cache
@@ -31,15 +21,8 @@ logger = get_logger("OCR")
 @dataclass
 class TextBlock:
     text: str
-    bbox: Tuple[int, int, int, int]
+    bbox: tuple[int, int, int, int]
     confidence: float
-
-    def to_dict(self) -> dict:
-        return {
-            "text": self.text,
-            "bbox": self.bbox,
-            "confidence": self.confidence
-        }
 
 
 class OCRService:
@@ -48,101 +31,98 @@ class OCRService:
     CACHE_TTL = 1800
     _instance_lock = threading.Lock()
     _instance = None
+    _lock: threading.Lock
+    use_gpu: bool
+    _ocr: Optional[object]
+    _loading: bool
+    _cancel_load: bool
+    _pending_callback: Optional[Callable]
+    _initialized: bool
 
     def __new__(cls, use_gpu: bool = False):
         with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = super().__new__(cls)
-                cls._instance._initialized = False
+                inst = super().__new__(cls)
+                inst._lock = threading.Lock()
+                inst.use_gpu = use_gpu
+                inst._ocr = None
+                inst._loading = False
+                inst._cancel_load = False
+                inst._pending_callback = None
+                inst._initialized = True
+                cls._instance = inst
             return cls._instance
 
     def __init__(self, use_gpu: bool = False):
-        if self._initialized:
-            return
+        pass
 
-        self.use_gpu = use_gpu
-        self._ocr = None
-        self.available = HAS_PIL and HAS_NUMPY
-        self._init_error = None
-        self._loading = False
-        self._cancel_load = False
-        self._init_lock = threading.Lock()
-        self._initialized = True
-
-    def load_async(self, callback=None):
-        with self._init_lock:
+    def load_async(self, callback: Optional[Callable] = None):
+        with self._lock:
             if self._loading:
-                logger.debug("[OCR] Already loading, ignoring duplicate request")
+                self._pending_callback = callback
+                logger.debug("[OCR] Already loading, will notify latest caller")
                 return
             if self._ocr is not None:
                 logger.debug("[OCR] Already loaded")
                 if callback:
                     callback(True)
                 return
-            if not self.available:
-                logger.warning(f"[OCR] Not available: PIL={HAS_PIL}, NUMPY={HAS_NUMPY}")
-                if callback:
-                    callback(False)
-                return
             self._loading = True
             self._cancel_load = False
+            self._pending_callback = callback
 
         def _load():
             try:
                 logger.info("[OCR] Loading PaddleOCR in background...")
                 from paddleocr import PaddleOCR
 
-                ocr = PaddleOCR(
-                    use_angle_cls=True,
-                    lang='ch',
-                    use_gpu=self.use_gpu,
-                    show_log=False
-                )
+                ocr = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=self.use_gpu, show_log=False)
 
-                with self._init_lock:
+                with self._lock:
                     if self._cancel_load:
                         logger.info("[OCR] Load cancelled, discarding instance")
                         self._loading = False
-                        if callback:
-                            callback(False)
+                        cb = self._pending_callback
+                        self._pending_callback = None
+                        if cb:
+                            cb(False)
                         return
                     self._ocr = ocr
                     self._loading = False
-                    self.available = True
-                    self._init_error = None
+                    cb = self._pending_callback
+                    self._pending_callback = None
 
                 logger.info("[OCR] PaddleOCR loaded successfully")
-                if callback:
-                    callback(True)
+                if cb:
+                    cb(True)
             except ImportError as e:
-                with self._init_lock:
+                with self._lock:
                     self._loading = False
-                    self.available = False
-                    self._init_error = f"ImportError: {e}"
+                    cb = self._pending_callback
+                    self._pending_callback = None
                 logger.error(f"[OCR] ImportError: {e}")
-                if callback:
-                    callback(False)
+                if cb:
+                    cb(False)
             except Exception as e:
-                with self._init_lock:
+                with self._lock:
                     self._loading = False
-                    self.available = False
-                    self._init_error = str(e)
+                    cb = self._pending_callback
+                    self._pending_callback = None
                 logger.exception(f"[OCR] Load failed: {e}")
-                if callback:
-                    callback(False)
+                if cb:
+                    cb(False)
 
         thread = threading.Thread(target=_load, daemon=True)
         thread.start()
 
     def release(self):
-        with self._init_lock:
+        with self._lock:
             self._cancel_load = True
-
             if self._ocr is not None:
                 logger.info("[OCR] Releasing OCR memory...")
-                for name in ('text_detector', 'text_recognizer', 'text_classifier'):
+                for name in ("text_detector", "text_recognizer", "text_classifier"):
                     comp = getattr(self._ocr, name, None)
-                    if comp and hasattr(comp, 'predictor'):
+                    if comp and hasattr(comp, "predictor"):
                         try:
                             comp.predictor.clear_intermediate_tensor()
                             comp.predictor.try_shrink_memory()
@@ -150,40 +130,41 @@ class OCRService:
                             pass
                 self._ocr = None
                 self._loading = False
+                self._pending_callback = None
                 logger.info("[OCR] OCR instance released")
 
         collected = gc.collect()
         logger.debug(f"[OCR] GC collected {collected} objects")
 
-    def is_loading(self) -> bool:
-        return self._loading
-
     def is_loaded(self) -> bool:
-        return self._ocr is not None
+        with self._lock:
+            return self._ocr is not None
 
     def get_init_error(self) -> Optional[str]:
-        return self._init_error
+        return None
 
     def is_available(self) -> bool:
-        return self.available
+        with self._lock:
+            return self._ocr is not None
 
     def _compute_image_hash(self, image) -> str:
         if isinstance(image, str):
             try:
-                with open(image, 'rb') as f:
+                with open(image, "rb") as f:
                     return hashlib.md5(f.read()).hexdigest()
             except Exception:
                 return hashlib.md5(str(image).encode()).hexdigest()
-        elif isinstance(image, np.ndarray):
-            return hashlib.md5(image.tobytes()).hexdigest()
-        elif hasattr(image, 'tobytes'):
-            return hashlib.md5(image.tobytes()).hexdigest()
-        else:
+        try:
+            data = image.tobytes() if hasattr(image, "tobytes") else str(image).encode()
+            return hashlib.md5(data).hexdigest()
+        except Exception:
             return hashlib.md5(str(image).encode()).hexdigest()
 
     def recognize(self, image) -> List[TextBlock]:
-        if not self.available or self._ocr is None:
-            return []
+        with self._lock:
+            if self._ocr is None:
+                return []
+            ocr = self._ocr
 
         image_hash = self._compute_image_hash(image)
         cache = get_cache(self.CACHE_NAME, self.CACHE_MAX_SIZE, self.CACHE_TTL)
@@ -207,7 +188,7 @@ class OCRService:
             input_data = img_array
 
         try:
-            result = self._ocr.ocr(input_data, cls=True)
+            result = ocr.ocr(input_data, cls=True)
         except Exception as e:
             logger.error(f"[OCR] 识别失败：{e}")
             return []
@@ -221,17 +202,12 @@ class OCRService:
 
                     x_coords = [p[0] for p in bbox_points]
                     y_coords = [p[1] for p in bbox_points]
-                    bbox = (int(min(x_coords)), int(min(y_coords)),
-                           int(max(x_coords)), int(max(y_coords)))
+                    bbox = (int(min(x_coords)), int(min(y_coords)), int(max(x_coords)), int(max(y_coords)))
 
                     if confidence < 0.5:
                         continue
 
-                    text_blocks.append(TextBlock(
-                        text=text,
-                        bbox=bbox,
-                        confidence=confidence
-                    ))
+                    text_blocks.append(TextBlock(text=text, bbox=bbox, confidence=confidence))
 
         text_blocks.sort(key=lambda b: b.bbox[1])
 
@@ -240,12 +216,3 @@ class OCRService:
             logger.debug(f"[OCR] Cached result for image hash: {image_hash[:8]}...")
 
         return text_blocks
-
-    def clear_cache(self) -> None:
-        cache = get_cache(self.CACHE_NAME, self.CACHE_MAX_SIZE, self.CACHE_TTL)
-        cache.clear()
-        logger.info("[OCR] Cache cleared")
-
-    @classmethod
-    def get_instance(cls, use_gpu: bool = False) -> 'OCRService':
-        return cls(use_gpu)

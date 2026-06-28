@@ -1,11 +1,11 @@
-from PyQt6.QtCore import QPoint, QRect, Qt
+from PyQt6.QtCore import QPoint, QRect, Qt, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QGuiApplication, QPainter, QPen
-from PyQt6.QtWidgets import QApplication, QWidget
-
-from src.theme import COLORS
+from PyQt6.QtWidgets import QWidget
 
 
 class RegionSelector(QWidget):
+    closed = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.start_point = QPoint()
@@ -15,12 +15,10 @@ class RegionSelector(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint
-        )
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
     def setup_fullscreen(self):
         screens = QGuiApplication.screens()
@@ -65,3 +63,7 @@ class RegionSelector(QWidget):
         if event.key() == Qt.Key.Key_Escape:
             self.selected_rect = None
             self.close()
+
+    def closeEvent(self, event):
+        self.closed.emit()
+        super().closeEvent(event)

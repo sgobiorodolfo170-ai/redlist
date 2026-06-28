@@ -34,7 +34,7 @@ class StickyNoteWindow(QWidget):
         self.init_ui(text)
 
     def init_ui(self, text):
-        bg_color = NOTE_COLORS.get(self.color, NOTE_COLORS['yellow'])
+        bg_color = NOTE_COLORS.get(self.color, NOTE_COLORS["yellow"])
 
         self.setStyleSheet(f"""
             QWidget {{
@@ -148,7 +148,7 @@ class StickyNoteWindow(QWidget):
             self.try_magnet()
 
     def eventFilter(self, obj, event):
-        if hasattr(self, 'text_edit') and obj == self.text_edit:
+        if hasattr(self, "text_edit") and obj == self.text_edit:
             if event.type() == event.Type.MouseButtonDblClick:
                 self.mouseDoubleClickEvent(event)
                 return True
@@ -220,14 +220,14 @@ class StickyNoteWindow(QWidget):
         threshold = 35
 
         main_window = self.manager.get_main_window()
-        if main_window and not getattr(main_window, 'is_dock_hidden', False):
+        if main_window and not getattr(main_window, "is_dock_hidden", False):
             main_geo = main_window.geometry()
             note_geo = self.geometry()
 
             if abs(note_geo.top() - main_geo.bottom()) < threshold and self._is_horizontal_overlap(main_geo, note_geo):
                 offset_x = note_geo.left() - main_geo.left()
                 self.move(main_geo.left() + offset_x, main_geo.bottom())
-                self.magnet_targets.append(('main', 'bottom'))
+                self.magnet_targets.append(("main", "bottom"))
                 self.magnet_offset = (offset_x, 0)
                 self.is_magnet = True
                 return
@@ -235,7 +235,7 @@ class StickyNoteWindow(QWidget):
             if abs(note_geo.bottom() - main_geo.top()) < threshold and self._is_horizontal_overlap(main_geo, note_geo):
                 offset_x = note_geo.left() - main_geo.left()
                 self.move(main_geo.left() + offset_x, main_geo.top() - note_geo.height())
-                self.magnet_targets.append(('main', 'top'))
+                self.magnet_targets.append(("main", "top"))
                 self.magnet_offset = (offset_x, 0)
                 self.is_magnet = True
                 return
@@ -243,7 +243,7 @@ class StickyNoteWindow(QWidget):
             if abs(note_geo.left() - main_geo.right()) < threshold and self._is_vertical_overlap(main_geo, note_geo):
                 offset_y = note_geo.top() - main_geo.top()
                 self.move(main_geo.right(), main_geo.top() + offset_y)
-                self.magnet_targets.append(('main', 'right'))
+                self.magnet_targets.append(("main", "right"))
                 self.magnet_offset = (0, offset_y)
                 self.is_magnet = True
                 return
@@ -251,7 +251,7 @@ class StickyNoteWindow(QWidget):
             if abs(note_geo.right() - main_geo.left()) < threshold and self._is_vertical_overlap(main_geo, note_geo):
                 offset_y = note_geo.top() - main_geo.top()
                 self.move(main_geo.left() - note_geo.width(), main_geo.top() + offset_y)
-                self.magnet_targets.append(('main', 'left'))
+                self.magnet_targets.append(("main", "left"))
                 self.magnet_offset = (0, offset_y)
                 self.is_magnet = True
                 return
@@ -263,33 +263,35 @@ class StickyNoteWindow(QWidget):
             other_geo = other_window.geometry()
             note_geo = self.geometry()
 
-            if (abs(note_geo.top() - other_geo.bottom()) < threshold
-                    and self._is_horizontal_overlap(other_geo, note_geo)):
+            if abs(note_geo.top() - other_geo.bottom()) < threshold and self._is_horizontal_overlap(
+                other_geo, note_geo
+            ):
                 aligned_x = other_geo.left()
                 self.move(aligned_x, other_geo.bottom())
-                self.magnet_targets.append((other_id, 'bottom'))
+                self.magnet_targets.append((other_id, "bottom"))
                 self.is_magnet = True
                 return
 
-            if (abs(note_geo.bottom() - other_geo.top()) < threshold
-                    and self._is_horizontal_overlap(other_geo, note_geo)):
+            if abs(note_geo.bottom() - other_geo.top()) < threshold and self._is_horizontal_overlap(
+                other_geo, note_geo
+            ):
                 aligned_x = other_geo.left()
                 self.move(aligned_x, other_geo.top() - note_geo.height())
-                self.magnet_targets.append((other_id, 'top'))
+                self.magnet_targets.append((other_id, "top"))
                 self.is_magnet = True
                 return
 
             if abs(note_geo.left() - other_geo.right()) < threshold and self._is_vertical_overlap(other_geo, note_geo):
                 aligned_y = other_geo.top()
                 self.move(other_geo.right(), aligned_y)
-                self.magnet_targets.append((other_id, 'right'))
+                self.magnet_targets.append((other_id, "right"))
                 self.is_magnet = True
                 return
 
             if abs(note_geo.right() - other_geo.left()) < threshold and self._is_vertical_overlap(other_geo, note_geo):
                 aligned_y = other_geo.top()
                 self.move(other_geo.left() - note_geo.width(), aligned_y)
-                self.magnet_targets.append((other_id, 'left'))
+                self.magnet_targets.append((other_id, "left"))
                 self.is_magnet = True
                 return
 

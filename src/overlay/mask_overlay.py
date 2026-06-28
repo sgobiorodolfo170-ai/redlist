@@ -22,11 +22,7 @@ class _BaseMaskOverlay(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
-        )
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setMouseTracking(True)
@@ -81,9 +77,7 @@ class _BaseMaskOverlay(QWidget):
 
         self.toolbar = QWidget()
         self.toolbar.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool
         )
         self.toolbar.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.toolbar.setFixedHeight(40)

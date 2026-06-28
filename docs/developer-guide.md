@@ -104,6 +104,16 @@ pytest --coverage       # 含覆盖率报告
 
 ## 构建应用
 
+### 一键构建（含安全护栏）
+
+```bash
+python scripts/pre_build_check.py    # 预构建检查
+pyinstaller build_final.spec         # 构建
+python scripts/post_build_verify.py  # 构建后验证
+```
+
+### 快速构建
+
 ```bash
 pyinstaller build_final.spec
 ```
@@ -141,6 +151,60 @@ pyinstaller build_final.spec
 - 助手气泡底部工具栏: 复制/导出 Markdown/重新生成（仅最后一条）
 - 回车发送 / Shift+Enter 换行，发送后自动聚焦输入框
 - 中文右击菜单: `createStandardContextMenu()` + `chinese_menu.py` 翻译
+
+## 构建安全护栏
+
+### 预构建检查 (`scripts/pre_build_check.py`)
+
+构建前自动执行以下验证，确保构建质量：
+- **版本一致性**：`pyproject.toml` 版本号与 `docs/release-notes.md` 最新版本一致
+- **Git 状态**：检测未提交的变更（警告，不阻塞）
+- **测试完整性**：确认 `tests/` 目录存在且有测试文件
+- **构建配置**：确认 `build_final.spec` 存在且包含 `hiddenimports`
+
+在构建前手动运行：
+```bash
+python scripts/pre_build_check.py
+```
+
+### 构建后验证 (`scripts/post_build_verify.py`)
+
+构建完成后自动执行：
+- **产物存在性**：确认 `RedList.exe` 已生成，检查文件大小
+- **SHA-256 校验和**：为所有 `.exe/.dll/.pyd` 文件生成哈希清单到 `dist/build_checksums.json`
+- **构建体积审计**：输出文件总数和总大小，异常大时警告
+- **关键模块可解析性**：验证 PyQt6/PIL/numpy 等核心依赖可导入
+
+```bash
+python scripts/post_build_verify.py
+```
+
+### CI 流水线 (`quality.yml`)
+
+GitHub Actions 包含 4 个并行 job：
+
+| Job | 工具 | 作用 |
+|---|---|---|
+| `lint` | ruff | 代码风格 + 格式检查 |
+| `test` | pytest + pytest-cov | 单元测试 + 覆盖率 |
+| `security` | bandit | 安全漏洞扫描 |
+| `pre-build` | pre_build_check.py | 版本一致性 + 构建前置条件 |
+
+### Pre-commit 钩子
+
+| 钩子 | 作用 |
+|---|---|
+| `trailing-whitespace` | 去除行尾多余空格 |
+| `end-of-file-fixer` | 确保文件以空行结尾 |
+| `check-yaml` / `check-json` | YAML/JSON 语法校验 |
+| `check-added-large-files` | 阻止 >500KB 文件提交 |
+| `check-case-conflict` | 检查文件名大小写冲突 |
+| `check-merge-conflict` | 检测残留的合并冲突标记 |
+| `detect-private-key` | 防止私钥泄露 |
+| `ruff check --fix` | 代码问题自动修复 |
+| `ruff-format` | 代码格式化 |
+| `mypy` | 静态类型检查 |
+| `bandit` | Python 安全扫描 |
 
 ## 配置与调试
 

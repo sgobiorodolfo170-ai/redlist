@@ -13,12 +13,13 @@ logger = get_logger("Settings")
 def set_auto_start(enabled: bool) -> bool:
     try:
         import winreg
+
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         app_name = "RedList"
 
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_WRITE)
         if enabled:
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 exe_path = sys.executable
             else:
                 exe_path = os.path.abspath(sys.argv[0])
@@ -44,6 +45,7 @@ def set_auto_start(enabled: bool) -> bool:
 def is_auto_start_enabled() -> bool:
     try:
         import winreg
+
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         app_name = "RedList"
 
@@ -76,9 +78,7 @@ class Settings:
         "baidu_nmt_app_key": "",
         "tencent_secret_id": "",
         "tencent_secret_key": "",
-
         "translate_target_lang": "zh",
-
         "llm_providers": [],
         "prompt_experts": [],
     }
@@ -86,9 +86,9 @@ class Settings:
     SAVE_DELAY_MS = 500
 
     def __init__(self):
-        self.app_data_dir = Path(os.environ.get('APPDATA', '')) / 'RedList'
+        self.app_data_dir = Path(os.environ.get("APPDATA", "")) / "RedList"
         self.app_data_dir.mkdir(exist_ok=True)
-        self.settings_file = self.app_data_dir / 'settings.json'
+        self.settings_file = self.app_data_dir / "settings.json"
         self.settings = self.load_settings()
         self._save_debouncer = Debouncer(delay_ms=self.SAVE_DELAY_MS)
         self._dirty = False
@@ -96,14 +96,14 @@ class Settings:
     def load_settings(self) -> dict:
         if self.settings_file.exists():
             try:
-                with open(self.settings_file, encoding='utf-8') as f:
+                with open(self.settings_file, encoding="utf-8") as f:
                     data = json.load(f)
                     settings = self.DEFAULT_SETTINGS.copy()
                     settings.update(data)
-                    if data.get('baidu_app_id') and not settings['baidu_nmt_app_id']:
-                        settings['baidu_nmt_app_id'] = data['baidu_app_id']
-                    if data.get('baidu_app_key') and not settings['baidu_nmt_app_key']:
-                        settings['baidu_nmt_app_key'] = data['baidu_app_key']
+                    if data.get("baidu_app_id") and not settings["baidu_nmt_app_id"]:
+                        settings["baidu_nmt_app_id"] = data["baidu_app_id"]
+                    if data.get("baidu_app_key") and not settings["baidu_nmt_app_key"]:
+                        settings["baidu_nmt_app_key"] = data["baidu_app_key"]
                     return settings
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON in settings file: {e}")
@@ -115,9 +115,9 @@ class Settings:
 
     def save(self) -> None:
         try:
-            self.settings.pop('baidu_app_id', None)
-            self.settings.pop('baidu_app_key', None)
-            with open(self.settings_file, 'w', encoding='utf-8') as f:
+            self.settings.pop("baidu_app_id", None)
+            self.settings.pop("baidu_app_key", None)
+            with open(self.settings_file, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
             self._dirty = False
         except PermissionError as e:
@@ -148,38 +148,38 @@ class Settings:
             self._save_debouncer.flush()
 
     def get_screenshot_path(self) -> str:
-        path = self.settings.get('screenshot_path', '')
+        path = self.settings.get("screenshot_path", "")
         if not path:
-            path = os.path.join(os.environ.get('USERPROFILE', ''), 'Pictures', 'Screenshots')
+            path = os.path.join(os.environ.get("USERPROFILE", ""), "Pictures", "Screenshots")
         return path
 
     def get_data_path(self) -> str:
-        path = self.settings.get('data_path', '')
+        path = self.settings.get("data_path", "")
         if not path:
             path = str(self.app_data_dir)
         return path
 
     def get_tasks_path(self) -> str:
-        path = self.settings.get('data_path', '')
+        path = self.settings.get("data_path", "")
         if not path:
             path = str(self.app_data_dir)
-        return os.path.join(path, 'tasks')
+        return os.path.join(path, "tasks")
 
     def get_notes_path(self) -> str:
-        path = self.settings.get('data_path', '')
+        path = self.settings.get("data_path", "")
         if not path:
             path = str(self.app_data_dir)
-        return os.path.join(path, 'notes')
+        return os.path.join(path, "notes")
 
     def get_alarm_sound(self) -> str:
-        return self.settings.get('alarm_sound', 'alert-sound-on-mobile-phone.mp3')
+        return self.settings.get("alarm_sound", "alert-sound-on-mobile-phone.mp3")
 
     def get_sounds_dir(self) -> str:
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             base_path = sys._MEIPASS
         else:
             base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_path, 'resources', 'sounds')
+        return os.path.join(base_path, "resources", "sounds")
 
     def get_alarm_sound_path(self) -> str:
         sound_file = self.get_alarm_sound()

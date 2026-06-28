@@ -12,7 +12,6 @@ logger = get_logger("Timer")
 
 
 class TimerPanel(QWidget):
-
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
@@ -37,7 +36,7 @@ class TimerPanel(QWidget):
         header.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {COLORS['text_primary']};
+            color: {COLORS["text_primary"]};
             padding: 8px 0;
         """)
         layout.addWidget(header)
@@ -49,22 +48,22 @@ class TimerPanel(QWidget):
         self.countdown_btn.setFixedHeight(32)
         self.countdown_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 4px;
                 font-size: 12px;
             }}
             QPushButton:checked {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
             }}
             QPushButton:!checked {{
                 background-color: white;
-                color: {COLORS['primary']};
-                border: 1px solid {COLORS['primary']};
+                color: {COLORS["primary"]};
+                border: 1px solid {COLORS["primary"]};
             }}
         """)
-        self.countdown_btn.clicked.connect(lambda: self.set_mode('countdown'))
+        self.countdown_btn.clicked.connect(lambda: self.set_mode("countdown"))
         mode_layout.addWidget(self.countdown_btn)
 
         self.pomodoro_btn = QPushButton("番茄钟")
@@ -73,18 +72,18 @@ class TimerPanel(QWidget):
         self.pomodoro_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: white;
-                color: {COLORS['primary']};
-                border: 1px solid {COLORS['primary']};
+                color: {COLORS["primary"]};
+                border: 1px solid {COLORS["primary"]};
                 border-radius: 4px;
                 font-size: 12px;
             }}
             QPushButton:checked {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
             }}
         """)
-        self.pomodoro_btn.clicked.connect(lambda: self.set_mode('pomodoro'))
+        self.pomodoro_btn.clicked.connect(lambda: self.set_mode("pomodoro"))
         mode_layout.addWidget(self.pomodoro_btn)
         layout.addLayout(mode_layout)
 
@@ -107,7 +106,7 @@ class TimerPanel(QWidget):
                 border-radius: 4px;
                 font-size: 18px;
                 font-weight: bold;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 padding: 4px;
             }}
         """)
@@ -115,8 +114,8 @@ class TimerPanel(QWidget):
 
         btn_style = f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                color: {COLORS['text_primary']};
+                background-color: {COLORS["background"]};
+                color: {COLORS["text_primary"]};
                 border: 1px solid #BDC3C7;
                 border-radius: 4px;
                 font-size: 18px;
@@ -128,10 +127,10 @@ class TimerPanel(QWidget):
             }}
             QPushButton:hover {{
                 background-color: #D5DBDB;
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
             }}
             QPushButton:pressed {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
             }}
         """
@@ -156,7 +155,7 @@ class TimerPanel(QWidget):
         font.setBold(True)
         self.time_label.setFont(font)
         self.time_label.setStyleSheet(f"""
-            color: {COLORS['text_primary']};
+            color: {COLORS["text_primary"]};
             padding: 16px 0;
         """)
         layout.addWidget(self.time_label)
@@ -168,11 +167,11 @@ class TimerPanel(QWidget):
             QProgressBar {{
                 border: none;
                 border-radius: 4px;
-                background-color: {COLORS['background']};
+                background-color: {COLORS["background"]};
                 height: 8px;
             }}
             QProgressBar::chunk {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 border-radius: 4px;
             }}
         """)
@@ -187,7 +186,7 @@ class TimerPanel(QWidget):
         self.start_btn.setFixedHeight(40)
         self.start_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -235,7 +234,7 @@ class TimerPanel(QWidget):
                 self.reset_timer()
 
     def set_mode(self, mode):
-        if mode == 'countdown':
+        if mode == "countdown":
             self.countdown_btn.setChecked(True)
             self.pomodoro_btn.setChecked(False)
             self.input_frame.setVisible(True)
@@ -359,13 +358,14 @@ class TimerPanel(QWidget):
         else:
             self.show_finish_dialog("时间到！", "确定")
 
-        if self.settings.get('play_sound', True):
+        if self.settings.get("play_sound", True):
             try:
                 sound_path = self.settings.get_alarm_sound_path()
                 if os.path.exists(sound_path):
                     play_sound(sound_path)
                 else:
                     import winsound
+
                     winsound.MessageBeep(winsound.MB_OK)
             except OSError as e:
                 logger.error(f"Failed to play sound: {e}")

@@ -4,16 +4,22 @@ import os
 from PyQt6.QtCore import QEvent, Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
-    QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel,
-    QMenu, QPushButton, QTextEdit, QVBoxLayout, QWidget,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
-from src.theme import COLORS
+from src.llm_chat.chinese_menu import _setup_chinese_context_menu
 from src.llm_chat.model_dialog import ModelDialog
 from src.llm_chat.prompt_expert_dialog import PromptExpertDialog
-
-
-from src.llm_chat.chinese_menu import _setup_chinese_context_menu
+from src.theme import COLORS
 
 
 class InputBar(QWidget):
@@ -38,11 +44,11 @@ class InputBar(QWidget):
                 border-radius: 8px;
                 padding: 8px 12px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 background-color: #F8F9FA;
             }}
             QTextEdit:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
                 background-color: white;
             }}
             QTextEdit::placeholder {{
@@ -53,12 +59,12 @@ class InputBar(QWidget):
                 border-radius: 6px;
                 padding: 6px 8px;
                 font-size: 12px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 background-color: #F8F9FA;
                 min-width: 40px;
             }}
             QComboBox:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
             }}
             QComboBox::drop-down {{
                 border: none;
@@ -67,8 +73,8 @@ class InputBar(QWidget):
             QComboBox QAbstractItemView {{
                 border: 1px solid #DEE2E6;
                 background-color: white;
-                selection-background-color: {COLORS['hover']};
-                selection-color: {COLORS['text_primary']};
+                selection-background-color: {COLORS["hover"]};
+                selection-color: {COLORS["text_primary"]};
                 padding: 4px;
             }}
             QPushButton {{
@@ -100,7 +106,9 @@ class InputBar(QWidget):
         attachment_layout.addWidget(self.attachment_preview)
 
         self.attachment_name = QLabel()
-        self.attachment_name.setStyleSheet(f"font-size: 11px; color: {COLORS['text_secondary']}; background: transparent;")
+        self.attachment_name.setStyleSheet(
+            f"font-size: 11px; color: {COLORS['text_secondary']}; background: transparent;"
+        )
         attachment_layout.addWidget(self.attachment_name)
         attachment_layout.addStretch()
 
@@ -137,15 +145,15 @@ class InputBar(QWidget):
         self.add_btn.setToolTip("添加附件")
         self.add_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
+                background-color: {COLORS["background"]};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 6px;
                 font-size: 16px;
                 font-weight: bold;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
         """)
         self.add_btn.clicked.connect(self.on_add_clicked)
@@ -169,7 +177,7 @@ class InputBar(QWidget):
         self.send_btn.setFixedSize(52, 32)
         self.send_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -203,19 +211,17 @@ class InputBar(QWidget):
             QMenu::item {{
                 padding: 6px 20px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QMenu::item:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
                 border-radius: 4px;
             }}
         """)
 
         screenshot_action = menu.addAction("📷  截图")
         file_action = menu.addAction("📄  添加文件")
-        action = menu.exec(self.add_btn.mapToGlobal(
-            self.add_btn.rect().bottomLeft()
-        ))
+        action = menu.exec(self.add_btn.mapToGlobal(self.add_btn.rect().bottomLeft()))
 
         if action == screenshot_action:
             self.screenshot_requested.emit()
@@ -224,19 +230,20 @@ class InputBar(QWidget):
 
     def on_add_file(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择文件", "",
-            "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif);;所有文件 (*)"
+            self, "选择文件", "", "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif);;所有文件 (*)"
         )
         if file_path:
             self.set_attachment(file_path)
 
     def set_attachment(self, file_path):
         ext = os.path.splitext(file_path)[1].lower()
-        if ext in ('.png', '.jpg', '.jpeg', '.bmp', '.gif'):
+        if ext in (".png", ".jpg", ".jpeg", ".bmp", ".gif"):
             pixmap = QPixmap(file_path)
             if not pixmap.isNull():
                 self.attachment_preview.setPixmap(
-                    pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    pixmap.scaled(
+                        32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation
+                    )
                 )
             self.attached_image_path = file_path
             self.attached_image = self._image_to_base64(file_path)
@@ -251,11 +258,11 @@ class InputBar(QWidget):
 
     def _image_to_base64(self, file_path):
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = f.read()
-            ext = os.path.splitext(file_path)[1].lower().replace('.', '')
-            if ext == 'jpg':
-                ext = 'jpeg'
+            ext = os.path.splitext(file_path)[1].lower().replace(".", "")
+            if ext == "jpg":
+                ext = "jpeg"
             return f"data:image/{ext};base64,{base64.b64encode(data).decode()}"
         except Exception:
             return None
@@ -265,9 +272,9 @@ class InputBar(QWidget):
         self.model_combo.blockSignals(True)
         try:
             self.model_combo.clear()
-            providers = self.settings.get('llm_providers', [])
+            providers = self.settings.get("llm_providers", [])
             for p in providers:
-                self.model_combo.addItem(p.get('name', p.get('model_name', '')), p)
+                self.model_combo.addItem(p.get("name", p.get("model_name", "")), p)
             if providers:
                 self.model_combo.insertSeparator(self.model_combo.count())
             self.model_combo.addItem("✚ 自定义...", "__custom__")
@@ -275,7 +282,7 @@ class InputBar(QWidget):
             if isinstance(current, dict):
                 for i in range(self.model_combo.count()):
                     data = self.model_combo.itemData(i)
-                    if isinstance(data, dict) and data.get('name') == current.get('name'):
+                    if isinstance(data, dict) and data.get("name") == current.get("name"):
                         self.model_combo.setCurrentIndex(i)
                         break
         finally:
@@ -286,9 +293,9 @@ class InputBar(QWidget):
         self.expert_combo.blockSignals(True)
         self.expert_combo.clear()
         self.expert_combo.addItem("无", None)
-        experts = self.settings.get('prompt_experts', [])
+        experts = self.settings.get("prompt_experts", [])
         for e in experts:
-            self.expert_combo.addItem(e.get('name', ''), e)
+            self.expert_combo.addItem(e.get("name", ""), e)
         if experts:
             self.expert_combo.insertSeparator(self.expert_combo.count())
         self.expert_combo.addItem("✚ 增加专家...", "__add_expert__")
@@ -306,13 +313,13 @@ class InputBar(QWidget):
             if dialog.exec():
                 result = dialog.get_result()
                 if result:
-                    providers = list(self.settings.get('llm_providers', []))
+                    providers = list(self.settings.get("llm_providers", []))
                     providers.append(result)
-                    self.settings.set('llm_providers', providers, immediate=True)
+                    self.settings.set("llm_providers", providers, immediate=True)
                     self.reload_providers()
                     for i in range(self.model_combo.count()):
                         d = self.model_combo.itemData(i)
-                        if isinstance(d, dict) and d.get('name') == result['name']:
+                        if isinstance(d, dict) and d.get("name") == result["name"]:
                             self.model_combo.setCurrentIndex(i)
                             break
 
@@ -323,13 +330,13 @@ class InputBar(QWidget):
             if dialog.exec():
                 result = dialog.get_result()
                 if result:
-                    experts = list(self.settings.get('prompt_experts', []))
+                    experts = list(self.settings.get("prompt_experts", []))
                     experts.append(result)
-                    self.settings.set('prompt_experts', experts, immediate=True)
+                    self.settings.set("prompt_experts", experts, immediate=True)
                     self.reload_experts()
                     for i in range(self.expert_combo.count()):
                         d = self.expert_combo.itemData(i)
-                        if isinstance(d, dict) and d.get('name') == result['name']:
+                        if isinstance(d, dict) and d.get("name") == result["name"]:
                             self.expert_combo.setCurrentIndex(i)
                             break
 
@@ -347,7 +354,10 @@ class InputBar(QWidget):
 
     def eventFilter(self, obj, event):
         if obj is self.input_edit and event.type() == QEvent.Type.KeyPress:
-            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and event.modifiers() == Qt.KeyboardModifier.NoModifier:
+            if (
+                event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+                and event.modifiers() == Qt.KeyboardModifier.NoModifier
+            ):
                 self.on_send()
                 return True
         return super().eventFilter(obj, event)

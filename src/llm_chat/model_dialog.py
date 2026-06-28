@@ -1,7 +1,13 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog, QFormLayout, QHBoxLayout, QLineEdit, QMessageBox,
-    QPushButton, QVBoxLayout, QLabel,
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from src.llm_chat.chinese_menu import _setup_chinese_context_menu
@@ -25,7 +31,7 @@ class ModelDialog(QDialog):
                 border-radius: 8px;
             }}
             QLabel {{
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
             }}
             QLineEdit {{
@@ -33,11 +39,11 @@ class ModelDialog(QDialog):
                 border-radius: 6px;
                 padding: 8px 10px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 background-color: #F8F9FA;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
                 background-color: white;
             }}
         """)
@@ -60,20 +66,20 @@ class ModelDialog(QDialog):
 
         self.url_edit = QLineEdit()
         self.url_edit.setPlaceholderText("https://api.openai.com/v1")
-        self.url_edit.setText(self.edit_data.get('api_url', '') if self.edit_data else '')
+        self.url_edit.setText(self.edit_data.get("api_url", "") if self.edit_data else "")
         form.addRow("接口地址:", self.url_edit)
         _setup_chinese_context_menu(self.url_edit)
 
         self.key_edit = QLineEdit()
         self.key_edit.setPlaceholderText("sk-...")
         self.key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.key_edit.setText(self.edit_data.get('api_key', '') if self.edit_data else '')
+        self.key_edit.setText(self.edit_data.get("api_key", "") if self.edit_data else "")
         form.addRow("API Key:", self.key_edit)
         _setup_chinese_context_menu(self.key_edit)
 
         self.model_edit = QLineEdit()
         self.model_edit.setPlaceholderText("gpt-4o")
-        self.model_edit.setText(self.edit_data.get('model_name', '') if self.edit_data else '')
+        self.model_edit.setText(self.edit_data.get("model_name", "") if self.edit_data else "")
         form.addRow("模型名称:", self.model_edit)
         _setup_chinese_context_menu(self.model_edit)
 
@@ -87,14 +93,14 @@ class ModelDialog(QDialog):
         cancel_btn.setFixedSize(80, 32)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
+                background-color: {COLORS["background"]};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 6px;
                 font-size: 13px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
         """)
         cancel_btn.clicked.connect(self.reject)
@@ -104,7 +110,7 @@ class ModelDialog(QDialog):
         save_btn.setFixedSize(80, 32)
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -127,11 +133,11 @@ class ModelDialog(QDialog):
         if not url or not key or not model:
             QMessageBox.warning(self, "提示", "请填写完整的接口地址、API Key 和模型名称")
             return
-        if not url.startswith('https://') and not url.startswith('http://'):
+        if not url.startswith("https://") and not url.startswith("http://"):
             QMessageBox.warning(self, "提示", "接口地址请以 http:// 或 https:// 开头")
             return
         name = model
-        self._result = {"name": name, "api_url": url.rstrip('/'), "api_key": key, "model_name": model}
+        self._result = {"name": name, "api_url": url.rstrip("/"), "api_key": key, "model_name": model}
         self.accept()
 
     def get_result(self):

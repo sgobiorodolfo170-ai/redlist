@@ -93,12 +93,12 @@ def _make_key(args: tuple, kwargs: dict) -> str:
     key_parts = [repr(args)]
     if kwargs:
         key_parts.append(repr(sorted(kwargs.items())))
-    key_str = ''.join(key_parts)
+    key_str = "".join(key_parts)
     return hashlib.md5(key_str.encode()).hexdigest()
 
 
 def image_hash(image_data) -> str:
-    if hasattr(image_data, 'tobytes'):
+    if hasattr(image_data, "tobytes"):
         data = image_data.tobytes()
     elif isinstance(image_data, bytes):
         data = image_data

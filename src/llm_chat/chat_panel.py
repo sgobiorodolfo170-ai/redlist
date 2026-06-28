@@ -1,12 +1,12 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QFrame, QSplitter, QVBoxLayout, QWidget
 
-from src.theme import COLORS
 from src.llm_chat.chat_display import ChatDisplay
 from src.llm_chat.conversation_list import ConversationList
 from src.llm_chat.conversation_manager import ConversationManager
 from src.llm_chat.input_bar import InputBar
 from src.llm_chat.llm_service import LLMService
+from src.theme import COLORS
 from src.utils.logger import get_logger
 
 logger = get_logger("ChatPanel")
@@ -25,10 +25,10 @@ class ChatPanel(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.setStyleSheet(f"""
-            QWidget {{
+        self.setStyleSheet("""
+            QWidget {
                 background-color: white;
-            }}
+            }
         """)
 
         layout = QVBoxLayout(self)
@@ -56,7 +56,7 @@ class ChatPanel(QWidget):
                 margin: 0;
             }}
             QSplitter::handle:hover {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
             }}
         """)
 
@@ -82,7 +82,7 @@ class ChatPanel(QWidget):
                 margin: 0;
             }}
             QSplitter::handle:hover {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
             }}
         """)
 
@@ -111,35 +111,42 @@ class ChatPanel(QWidget):
             self._conv_list_expanded = sizes[0]
             self.splitter.setSizes([0, sum(sizes)])
         else:
-            restore = getattr(self, '_conv_list_expanded', 120)
+            restore = getattr(self, "_conv_list_expanded", 120)
             sizes = self.splitter.sizes()
             self.splitter.setSizes([restore, sum(sizes) - restore])
 
-    def on_conversation_selected(self, conv_id):
-        if self.llm_service and self.llm_service.isRunning():
-            self.llm_service.cancel()
-            self.llm_service.wait(500)
+    def _cleanup_llm(self):
+        if self.llm_service:
+            if self.llm_service.isRunning():
+                self.llm_service.cancel()
+                self.llm_service.quit()
+                if not self.llm_service.wait(3000):
+                    self.llm_service.terminate()
+                    self.llm_service.wait()
             self.llm_service = None
             self.input_bar.send_btn.setEnabled(True)
             self.input_bar.input_edit.setEnabled(True)
             self.chat_display.finalize_temp_bubble()
+
+    def on_conversation_selected(self, conv_id):
+        self._cleanup_llm()
         self.current_conv_id = conv_id
         data = self.conv_manager.get_conversation(conv_id)
         if data:
-            self.current_messages = data.get('messages', [])
-            model = data.get('model', {})
+            self.current_messages = data.get("messages", [])
+            model = data.get("model", {})
             self.chat_display.load_messages(self.current_messages)
 
             self.input_bar.reload_providers()
             for i in range(self.input_bar.model_combo.count()):
                 d = self.input_bar.model_combo.itemData(i)
-                if isinstance(d, dict) and d.get('name') == model.get('name'):
+                if isinstance(d, dict) and d.get("name") == model.get("name"):
                     self.input_bar.model_combo.setCurrentIndex(i)
                     break
 
     def on_regenerate_requested(self):
         for i in range(len(self.current_messages) - 1, -1, -1):
-            if self.current_messages[i]['role'] == 'assistant':
+            if self.current_messages[i]["role"] == "assistant":
                 del self.current_messages[i]
                 break
         else:
@@ -147,8 +154,8 @@ class ChatPanel(QWidget):
 
         last_user_content = None
         for msg in reversed(self.current_messages):
-            if msg['role'] == 'user':
-                last_user_content = msg['content']
+            if msg["role"] == "user":
+                last_user_content = msg["content"]
                 break
         if last_user_content is None:
             return
@@ -162,12 +169,12 @@ class ChatPanel(QWidget):
         expert = self.input_bar.get_selected_expert()
         api_messages = []
         if expert:
-            api_messages.append({"role": "system", "content": expert.get('system_prompt', '')})
+            api_messages.append({"role": "system", "content": expert.get("system_prompt", "")})
         for msg in self.current_messages:
             api_messages.append({"role": msg["role"], "content": msg["content"]})
 
-        self.chat_display.create_temp_bubble('assistant')
-        self.chat_display.update_temp_bubble('思考中...')
+        self.chat_display.create_temp_bubble("assistant")
+        self.chat_display.update_temp_bubble("思考中...")
         self.input_bar.send_btn.setEnabled(False)
         self.input_bar.input_edit.setEnabled(False)
 
@@ -189,22 +196,24 @@ class ChatPanel(QWidget):
         user_message = {"role": "user", "content": content}
         self.current_messages.append(user_message)
 
-        self.chat_display.create_temp_bubble('user')
+        self.chat_display.create_temp_bubble("user")
         if isinstance(content, str):
             self.chat_display.update_temp_bubble(content)
         elif isinstance(content, list):
-            texts = [p.get('text', '') for p in content if p.get('type') == 'text']
-            self.chat_display.update_temp_bubble('\n'.join(texts) + ('\n[图片]' if any(p.get('type') == 'image_url' for p in content) else ''))
+            texts = [p.get("text", "") for p in content if p.get("type") == "text"]
+            self.chat_display.update_temp_bubble(
+                "\n".join(texts) + ("\n[图片]" if any(p.get("type") == "image_url" for p in content) else "")
+            )
         self.chat_display.finalize_temp_bubble()
 
         api_messages = []
         if expert:
-            api_messages.append({"role": "system", "content": expert.get('system_prompt', '')})
+            api_messages.append({"role": "system", "content": expert.get("system_prompt", "")})
         for msg in self.current_messages:
             api_messages.append({"role": msg["role"], "content": msg["content"]})
 
-        self.chat_display.create_temp_bubble('assistant')
-        self.chat_display.update_temp_bubble('思考中...')
+        self.chat_display.create_temp_bubble("assistant")
+        self.chat_display.update_temp_bubble("思考中...")
 
         self.input_bar.send_btn.setEnabled(False)
         self.input_bar.input_edit.setEnabled(False)
@@ -247,7 +256,7 @@ class ChatPanel(QWidget):
         logger.error(f"LLM error: {error_msg}")
 
     def on_screenshot_requested(self):
-        if self.main_window and hasattr(self.main_window, 'start_screenshot'):
+        if self.main_window and hasattr(self.main_window, "start_screenshot"):
             self.main_window.start_screenshot()
 
     def set_main_window(self, main_window):

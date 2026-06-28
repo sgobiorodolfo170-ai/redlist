@@ -2,9 +2,8 @@ import datetime
 import os
 import sys
 
-from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEventLoop, QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QFrame,
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
 
 try:
     from PIL import Image
+
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
@@ -26,12 +26,14 @@ except ImportError:
 
 try:
     import mss
+
     HAS_MSS = True
 except ImportError:
     HAS_MSS = False
     mss = None
 
 from src.ocr.ocr_service import OCRService
+from src.ocr.ocr_thread import OCRThread
 from src.overlay.mask_overlay import MaskTranslationOverlay
 from src.screenshot.region_selector import RegionSelector
 from src.screenshot.translation_thread import TranslationThread
@@ -47,7 +49,7 @@ ERROR_LOG = "报错日志.md"
 
 def _write_error_log(msg: str):
     try:
-        log_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.getcwd()
+        log_dir = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else os.getcwd()
         log_path = os.path.join(log_dir, ERROR_LOG)
         entry = (
             f"# 报错日志\n\n"
@@ -75,6 +77,7 @@ class ScreenshotTranslatePanel(QWidget):
         self.last_text_blocks: list = []
         self.last_screenshot_rect = None
         self.translation_thread = None
+        self.ocr_thread = None
 
         self._ocr_load_timer = QTimer()
         self._ocr_load_timer.setSingleShot(True)
@@ -89,14 +92,14 @@ class ScreenshotTranslatePanel(QWidget):
                 background-color: white;
             }}
             QLabel {{
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QLineEdit {{
                 border: none;
                 border-radius: 6px;
                 padding: 10px 12px;
                 background-color: #F5F5F5;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
                 min-height: 20px;
             }}
@@ -111,7 +114,7 @@ class ScreenshotTranslatePanel(QWidget):
                 border-radius: 6px;
                 padding: 10px 12px;
                 background-color: #F5F5F5;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
                 min-height: 20px;
             }}
@@ -129,8 +132,8 @@ class ScreenshotTranslatePanel(QWidget):
             QComboBox QAbstractItemView {{
                 border: 1px solid #DEE2E6;
                 background-color: white;
-                selection-background-color: {COLORS['hover']};
-                selection-color: {COLORS['text_primary']};
+                selection-background-color: {COLORS["hover"]};
+                selection-color: {COLORS["text_primary"]};
                 padding: 4px;
             }}
             QCheckBox {{
@@ -147,18 +150,18 @@ class ScreenshotTranslatePanel(QWidget):
                 background-color: white;
             }}
             QCheckBox::indicator:checked {{
-                border: 2px solid {COLORS['primary']};
-                background-color: {COLORS['primary']};
+                border: 2px solid {COLORS["primary"]};
+                background-color: {COLORS["primary"]};
             }}
             QCheckBox::indicator:hover {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
             }}
             QToolTip {{
                 background-color: white;
                 border: 1px solid #DEE2E6;
                 border-radius: 8px;
                 padding: 12px 16px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 12px;
             }}
         """)
@@ -173,7 +176,7 @@ class ScreenshotTranslatePanel(QWidget):
         self.translate_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.translate_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -223,7 +226,7 @@ class ScreenshotTranslatePanel(QWidget):
         self.provider_combo.addItem("百度通用文本翻译", "baidu_nmt")
         self.provider_combo.addItem("腾讯翻译君", "tencent")
 
-        current_provider = self.settings.get('translate_provider', 'baidu_llm')
+        current_provider = self.settings.get("translate_provider", "baidu_llm")
         idx = self.provider_combo.findData(current_provider)
         if idx >= 0:
             self.provider_combo.setCurrentIndex(idx)
@@ -235,17 +238,17 @@ class ScreenshotTranslatePanel(QWidget):
         help_btn.setCursor(Qt.CursorShape.WhatsThisCursor)
         help_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
+                background-color: {COLORS["background"]};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 12px;
                 font-size: 13px;
                 font-weight: bold;
-                color: {COLORS['text_secondary']};
+                color: {COLORS["text_secondary"]};
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
-                color: {COLORS['primary']};
-                border-color: {COLORS['primary']};
+                background-color: {COLORS["hover"]};
+                color: {COLORS["primary"]};
+                border-color: {COLORS["primary"]};
             }}
         """)
         help_btn.setToolTip(
@@ -291,11 +294,19 @@ class ScreenshotTranslatePanel(QWidget):
 
         show_key_check = QCheckBox("显示密钥")
         show_key_check.setChecked(False)
-        show_key_check.toggled.connect(lambda checked: (
-            self.baidu_llm_key_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password),
-            self.baidu_nmt_key_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password),
-            self.tencent_key_edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password)
-        ))
+        show_key_check.toggled.connect(
+            lambda checked: (
+                self.baidu_llm_key_edit.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+                ),
+                self.baidu_nmt_key_edit.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+                ),
+                self.tencent_key_edit.setEchoMode(
+                    QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+                ),
+            )
+        )
         config_header_row.addWidget(show_key_check)
 
         config_layout.addLayout(config_header_row)
@@ -315,8 +326,8 @@ class ScreenshotTranslatePanel(QWidget):
 
         self.tencent_id_edit = QLineEdit()
         self.tencent_id_edit.setPlaceholderText("输入腾讯云 Secret ID")
-        self.tencent_id_edit.setText(self.settings.get('tencent_secret_id', '').strip())
-        self.tencent_id_edit.textChanged.connect(lambda v: self.settings.set('tencent_secret_id', v.strip()))
+        self.tencent_id_edit.setText(self.settings.get("tencent_secret_id", "").strip())
+        self.tencent_id_edit.textChanged.connect(lambda v: self.settings.set("tencent_secret_id", v.strip()))
         tencent_id_row.addWidget(self.tencent_id_edit, 1)
 
         tencent_layout.addLayout(tencent_id_row)
@@ -332,8 +343,8 @@ class ScreenshotTranslatePanel(QWidget):
         self.tencent_key_edit = QLineEdit()
         self.tencent_key_edit.setPlaceholderText("输入腾讯云 Secret Key")
         self.tencent_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.tencent_key_edit.setText(self.settings.get('tencent_secret_key', '').strip())
-        self.tencent_key_edit.textChanged.connect(lambda v: self.settings.set('tencent_secret_key', v.strip()))
+        self.tencent_key_edit.setText(self.settings.get("tencent_secret_key", "").strip())
+        self.tencent_key_edit.textChanged.connect(lambda v: self.settings.set("tencent_secret_key", v.strip()))
         tencent_key_row.addWidget(self.tencent_key_edit, 1)
 
         tencent_layout.addLayout(tencent_key_row)
@@ -353,8 +364,8 @@ class ScreenshotTranslatePanel(QWidget):
         baidu_llm_id_row.addWidget(baidu_llm_id_label)
         self.baidu_llm_id_edit = QLineEdit()
         self.baidu_llm_id_edit.setPlaceholderText("输入百度大模型 App ID")
-        self.baidu_llm_id_edit.setText(self.settings.get('baidu_llm_app_id', '').strip())
-        self.baidu_llm_id_edit.textChanged.connect(lambda v: self.settings.set('baidu_llm_app_id', v.strip()))
+        self.baidu_llm_id_edit.setText(self.settings.get("baidu_llm_app_id", "").strip())
+        self.baidu_llm_id_edit.textChanged.connect(lambda v: self.settings.set("baidu_llm_app_id", v.strip()))
         baidu_llm_id_row.addWidget(self.baidu_llm_id_edit, 1)
         baidu_llm_layout.addLayout(baidu_llm_id_row)
 
@@ -367,8 +378,8 @@ class ScreenshotTranslatePanel(QWidget):
         self.baidu_llm_key_edit = QLineEdit()
         self.baidu_llm_key_edit.setPlaceholderText("输入百度大模型 App Key")
         self.baidu_llm_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.baidu_llm_key_edit.setText(self.settings.get('baidu_llm_app_key', '').strip())
-        self.baidu_llm_key_edit.textChanged.connect(lambda v: self.settings.set('baidu_llm_app_key', v.strip()))
+        self.baidu_llm_key_edit.setText(self.settings.get("baidu_llm_app_key", "").strip())
+        self.baidu_llm_key_edit.textChanged.connect(lambda v: self.settings.set("baidu_llm_app_key", v.strip()))
         baidu_llm_key_row.addWidget(self.baidu_llm_key_edit, 1)
         baidu_llm_layout.addLayout(baidu_llm_key_row)
 
@@ -387,8 +398,8 @@ class ScreenshotTranslatePanel(QWidget):
         baidu_nmt_id_row.addWidget(baidu_nmt_id_label)
         self.baidu_nmt_id_edit = QLineEdit()
         self.baidu_nmt_id_edit.setPlaceholderText("输入百度通用 App ID")
-        self.baidu_nmt_id_edit.setText(self.settings.get('baidu_nmt_app_id', '').strip())
-        self.baidu_nmt_id_edit.textChanged.connect(lambda v: self.settings.set('baidu_nmt_app_id', v.strip()))
+        self.baidu_nmt_id_edit.setText(self.settings.get("baidu_nmt_app_id", "").strip())
+        self.baidu_nmt_id_edit.textChanged.connect(lambda v: self.settings.set("baidu_nmt_app_id", v.strip()))
         baidu_nmt_id_row.addWidget(self.baidu_nmt_id_edit, 1)
         baidu_nmt_layout.addLayout(baidu_nmt_id_row)
 
@@ -401,8 +412,8 @@ class ScreenshotTranslatePanel(QWidget):
         self.baidu_nmt_key_edit = QLineEdit()
         self.baidu_nmt_key_edit.setPlaceholderText("输入百度通用 App Key")
         self.baidu_nmt_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        self.baidu_nmt_key_edit.setText(self.settings.get('baidu_nmt_app_key', '').strip())
-        self.baidu_nmt_key_edit.textChanged.connect(lambda v: self.settings.set('baidu_nmt_app_key', v.strip()))
+        self.baidu_nmt_key_edit.setText(self.settings.get("baidu_nmt_app_key", "").strip())
+        self.baidu_nmt_key_edit.textChanged.connect(lambda v: self.settings.set("baidu_nmt_app_key", v.strip()))
         baidu_nmt_key_row.addWidget(self.baidu_nmt_key_edit, 1)
         baidu_nmt_layout.addLayout(baidu_nmt_key_row)
 
@@ -434,7 +445,7 @@ class ScreenshotTranslatePanel(QWidget):
 
     def _on_provider_changed(self):
         provider = self.provider_combo.currentData()
-        self.settings.set('translate_provider', provider)
+        self.settings.set("translate_provider", provider)
         self._update_config_visibility(provider)
 
     def _update_config_visibility(self, provider):
@@ -475,8 +486,9 @@ class ScreenshotTranslatePanel(QWidget):
         self.selector = RegionSelector()
         self.selector.setup_fullscreen()
 
-        while self.selector.isVisible():
-            QApplication.processEvents()
+        loop = QEventLoop()
+        self.selector.closed.connect(loop.quit)
+        loop.exec()
 
         if self.selector.selected_rect is None or self.selector.selected_rect.width() < 10:
             return None
@@ -485,12 +497,7 @@ class ScreenshotTranslatePanel(QWidget):
         self.last_screenshot_rect = rect
 
         with mss.mss() as sct:
-            monitor = {
-                "top": rect.y(),
-                "left": rect.x(),
-                "width": rect.width(),
-                "height": rect.height()
-            }
+            monitor = {"top": rect.y(), "left": rect.x(), "width": rect.width(), "height": rect.height()}
             screenshot = sct.grab(monitor)
             return Image.frombytes("RGB", screenshot.size, screenshot.rgb), rect
 
@@ -498,10 +505,7 @@ class ScreenshotTranslatePanel(QWidget):
         items = []
         for block in text_blocks:
             bbox_abs = QRect(
-                block.bbox[0] + screenshot_rect.x(),
-                block.bbox[1] + screenshot_rect.y(),
-                block.bbox[2],
-                block.bbox[3]
+                block.bbox[0] + screenshot_rect.x(), block.bbox[1] + screenshot_rect.y(), block.bbox[2], block.bbox[3]
             )
             if status_text:
                 items.append((bbox_abs, block.text, status_text))
@@ -515,9 +519,7 @@ class ScreenshotTranslatePanel(QWidget):
             self.translation_thread.quit()
             self.translation_thread.wait(1000)
 
-        self.translation_thread = TranslationThread(
-            text_blocks, self.translation_service, screenshot_rect
-        )
+        self.translation_thread = TranslationThread(text_blocks, self.translation_service, screenshot_rect)
         self.translation_thread.progress_signal.connect(self._on_translation_progress)
         self.translation_thread.finished_signal.connect(self._on_translation_finished)
         self.translation_thread.error_signal.connect(self._on_translation_error)
@@ -530,16 +532,27 @@ class ScreenshotTranslatePanel(QWidget):
 
         provider = self.provider_combo.currentData()
         if provider == "baidu_llm":
-            if not self.settings.get('baidu_llm_app_id', '').strip() or not self.settings.get('baidu_llm_app_key', '').strip():
+            if (
+                not self.settings.get("baidu_llm_app_id", "").strip()
+                or not self.settings.get("baidu_llm_app_key", "").strip()
+            ):
                 QMessageBox.warning(self, "翻译未配置", "请先在下方「API 密钥配置」中填写百度大模型 App ID 和 App Key")
                 return
         elif provider == "baidu_nmt":
-            if not self.settings.get('baidu_nmt_app_id', '').strip() or not self.settings.get('baidu_nmt_app_key', '').strip():
+            if (
+                not self.settings.get("baidu_nmt_app_id", "").strip()
+                or not self.settings.get("baidu_nmt_app_key", "").strip()
+            ):
                 QMessageBox.warning(self, "翻译未配置", "请先在下方「API 密钥配置」中填写百度通用 App ID 和 App Key")
                 return
         elif provider == "tencent":
-            if not self.settings.get('tencent_secret_id', '').strip() or not self.settings.get('tencent_secret_key', '').strip():
-                QMessageBox.warning(self, "翻译未配置", "请先在下方「API 密钥配置」中填写腾讯云 Secret ID 和 Secret Key")
+            if (
+                not self.settings.get("tencent_secret_id", "").strip()
+                or not self.settings.get("tencent_secret_key", "").strip()
+            ):
+                QMessageBox.warning(
+                    self, "翻译未配置", "请先在下方「API 密钥配置」中填写腾讯云 Secret ID 和 Secret Key"
+                )
                 return
 
         result = self._capture_region()
@@ -554,7 +567,40 @@ class ScreenshotTranslatePanel(QWidget):
             QMessageBox.critical(self, "OCR 错误", f"OCR 初始化失败：{err}")
             return
 
-        text_blocks = self.ocr_service.recognize(image)
+        self._cancel_ocr_thread()
+        self.ocr_thread = OCRThread(image, self)
+        self.ocr_thread.finished_signal.connect(lambda blocks: self._on_ocr_ready(blocks, screenshot_rect))
+        self.ocr_thread.error_signal.connect(lambda msg: self._on_ocr_error(msg))
+        self.ocr_thread.start()
+
+    def _on_translation_progress(self, index, original, translated):
+        if self.mask_translation_overlay and self.mask_translation_overlay.text_items:
+            if index < len(self.mask_translation_overlay.text_items):
+                self.mask_translation_overlay.text_items[index] = (
+                    self.mask_translation_overlay.text_items[index][0],
+                    original,
+                    translated,
+                )
+                self.mask_translation_overlay.all_translated_text = "\n".join(
+                    [item[2] for item in self.mask_translation_overlay.text_items]
+                )
+                self.mask_translation_overlay.update()
+
+    def _on_translation_finished(self, overlay_items):
+        if self.mask_translation_overlay:
+            self.mask_translation_overlay.set_texts(overlay_items, self.last_screenshot_rect)
+
+    def _on_translation_error(self, msg):
+        _write_error_log(msg)
+        QMessageBox.warning(self, "翻译提示", f"{msg}\n请检查 API 密钥配置和网络连接")
+
+    def _cancel_ocr_thread(self):
+        if self.ocr_thread and self.ocr_thread.isRunning():
+            self.ocr_thread.cancel()
+            self.ocr_thread.quit()
+            self.ocr_thread.wait(2000)
+
+    def _on_ocr_ready(self, text_blocks, screenshot_rect):
         if not text_blocks:
             QMessageBox.information(self, "提示", "未识别到文字，请重试")
             return
@@ -571,29 +617,15 @@ class ScreenshotTranslatePanel(QWidget):
         self.mask_translation_overlay.show()
         self._start_translation_thread(text_blocks, screenshot_rect)
 
-    def _on_translation_progress(self, index, original, translated):
-        if self.mask_translation_overlay and self.mask_translation_overlay.text_items:
-            if index < len(self.mask_translation_overlay.text_items):
-                self.mask_translation_overlay.text_items[index] = (
-                    self.mask_translation_overlay.text_items[index][0],
-                    original,
-                    translated
-                )
-                self.mask_translation_overlay.all_translated_text = "\n".join(
-                    [item[2] for item in self.mask_translation_overlay.text_items]
-                )
-                self.mask_translation_overlay.update()
-
-    def _on_translation_finished(self, overlay_items):
-        if self.mask_translation_overlay:
-            self.mask_translation_overlay.set_texts(overlay_items, self.last_screenshot_rect)
-
-    def _on_translation_error(self, msg):
+    def _on_ocr_error(self, msg):
         _write_error_log(msg)
-        QMessageBox.warning(self, "翻译提示", f"{msg}\n请检查 API 密钥配置和网络连接")
+        QMessageBox.critical(self, "OCR 错误", f"OCR 识别失败：{msg}")
 
     def _on_rect_changed(self, new_rect):
         if not HAS_MSS or not HAS_PIL:
+            return
+
+        if not self.ocr_service.is_available():
             return
 
         with mss.mss() as sct:
@@ -601,15 +633,17 @@ class ScreenshotTranslatePanel(QWidget):
                 "top": new_rect.y(),
                 "left": new_rect.x(),
                 "width": new_rect.width(),
-                "height": new_rect.height()
+                "height": new_rect.height(),
             }
             screenshot = sct.grab(monitor)
             image = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
 
-        if not self.ocr_service.is_available():
-            return
+        self._cancel_ocr_thread()
+        self.ocr_thread = OCRThread(image, self)
+        self.ocr_thread.finished_signal.connect(lambda blocks: self._on_rect_ocr_ready(blocks, new_rect))
+        self.ocr_thread.start()
 
-        text_blocks = self.ocr_service.recognize(image)
+    def _on_rect_ocr_ready(self, text_blocks, new_rect):
         if not text_blocks:
             return
 
@@ -621,6 +655,8 @@ class ScreenshotTranslatePanel(QWidget):
         self._start_translation_thread(text_blocks, new_rect)
 
     def clear_overlays(self):
+        self._cancel_ocr_thread()
+
         if self.translation_thread and self.translation_thread.isRunning():
             self.translation_thread.cancel()
             self.translation_thread.quit()
@@ -632,6 +668,7 @@ class ScreenshotTranslatePanel(QWidget):
             self.mask_translation_overlay.clear()
 
     def closeEvent(self, event):
+        self._cancel_ocr_thread()
         if self.translation_thread and self.translation_thread.isRunning():
             self.translation_thread.cancel()
             self.translation_thread.quit()

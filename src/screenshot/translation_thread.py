@@ -33,7 +33,7 @@ class TranslationThread(QThread):
                 block.bbox[0] + self.screenshot_rect.x(),
                 block.bbox[1] + self.screenshot_rect.y(),
                 block.bbox[2],
-                block.bbox[3]
+                block.bbox[3],
             )
 
             self.translation_service.last_error = ""

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta:__legacy__"
 
 [project]
 name = "redlist"
-version = "3.0.0"
+version = "3.2.0"
 description = "截图翻译与文字提取桌面工具"
 readme = "README.md"
 license = { text = "MIT" }
@@ -33,6 +33,17 @@ ignore = ["N801", "N802", "N803", "N806", "N815", "N816"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist", ".git"]
+skips = ["B101", "B301", "B403", "B404", "B603", "B607"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["build/", "dist/", "tests/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

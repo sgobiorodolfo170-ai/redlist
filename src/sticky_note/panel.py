@@ -10,12 +10,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.sticky_note.manager import MAX_NOTES
+from src.sticky_note.constants import MAX_NOTES
 from src.theme import COLORS, NOTE_COLORS
 
 
 class StickyNotePanel(QWidget):
-
     def __init__(self, settings, manager):
         super().__init__()
         self.settings = settings
@@ -71,7 +70,7 @@ class StickyNotePanel(QWidget):
         add_btn.setFixedHeight(36)
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -116,15 +115,15 @@ class StickyNotePanel(QWidget):
                 self.create_note_card(note)
 
     def create_note_card(self, note):
-        if not isinstance(note, dict) or 'id' not in note:
+        if not isinstance(note, dict) or "id" not in note:
             return
 
         card = QFrame()
         card.setFixedHeight(50)
         card.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        color_key = note.get('color', 'yellow')
-        bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS['yellow'])
+        color_key = note.get("color", "yellow")
+        bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS["yellow"])
 
         card.setStyleSheet(f"""
             QFrame {{
@@ -138,12 +137,12 @@ class StickyNotePanel(QWidget):
         layout = QVBoxLayout(card)
         layout.setContentsMargins(8, 4, 8, 4)
 
-        text = note.get('text', '')
+        text = note.get("text", "")
         is_placeholder = not text
-        display_text = text or '# 单击显示/隐藏，双击删除'
+        display_text = text or "# 单击显示/隐藏，双击删除"
         text_label = QLabel(display_text)
         text_label.setWordWrap(True)
-        text_color = '#7F8C8D' if is_placeholder else 'black'
+        text_color = "#7F8C8D" if is_placeholder else "black"
         text_label.setStyleSheet(f"""
             QLabel {{
                 background-color: transparent;
@@ -152,7 +151,7 @@ class StickyNotePanel(QWidget):
                 padding: 2px;
             }}
         """)
-        note_id = note.get('id')
+        note_id = note.get("id")
         if not note_id or not isinstance(note_id, str):
             return
         layout.addWidget(text_label)
@@ -168,9 +167,9 @@ class StickyNotePanel(QWidget):
     def refresh_card_color(self, note_id, color_key):
         if not note_id or not isinstance(note_id, str):
             return
-        if hasattr(self, 'card_frames') and note_id in self.card_frames:
+        if hasattr(self, "card_frames") and note_id in self.card_frames:
             card = self.card_frames[note_id]
-            bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS['yellow'])
+            bg_color = NOTE_COLORS.get(color_key, NOTE_COLORS["yellow"])
             card.setStyleSheet(f"""
                 QFrame {{
                     background-color: {bg_color};
@@ -183,12 +182,12 @@ class StickyNotePanel(QWidget):
     def refresh_card_text(self, note_id, text):
         if not note_id or not isinstance(note_id, str):
             return
-        if hasattr(self, 'card_editors') and note_id in self.card_editors:
+        if hasattr(self, "card_editors") and note_id in self.card_editors:
             label = self.card_editors[note_id]
             is_placeholder = not text
-            display_text = text or '# 单击显示/隐藏，双击删除'
+            display_text = text or "# 单击显示/隐藏，双击删除"
             label.setText(display_text)
-            text_color = '#7F8C8D' if is_placeholder else 'black'
+            text_color = "#7F8C8D" if is_placeholder else "black"
             label.setStyleSheet(f"""
                 QLabel {{
                     background-color: transparent;
@@ -204,8 +203,8 @@ class StickyNotePanel(QWidget):
 
     def on_card_double_click(self, event, note_id):
         msg = QMessageBox(self)
-        msg.setWindowTitle('确认删除')
-        msg.setText('确定要删除这个便利贴吗？')
+        msg.setWindowTitle("确认删除")
+        msg.setText("确定要删除这个便利贴吗？")
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg.setDefaultButton(QMessageBox.StandardButton.No)
         msg.setStyleSheet("""
@@ -241,9 +240,9 @@ class StickyNotePanel(QWidget):
         QTimer.singleShot(300, self.load_note_cards)
 
     def toggle_all_notes(self):
-        manager_notes = getattr(self.manager, 'notes', [])
-        valid_notes = [n for n in manager_notes if isinstance(n, dict) and isinstance(n.get('id'), str)]
-        note_ids = [note['id'] for note in valid_notes]
+        manager_notes = getattr(self.manager, "notes", [])
+        valid_notes = [n for n in manager_notes if isinstance(n, dict) and isinstance(n.get("id"), str)]
+        note_ids = [note["id"] for note in valid_notes]
 
         any_visible = False
         for nid in note_ids:
@@ -265,7 +264,7 @@ class StickyNotePanel(QWidget):
                     else:
                         note_data = None
                         for note in valid_notes:
-                            if note.get('id') == nid:
+                            if note.get("id") == nid:
                                 note_data = note.copy()
                                 break
                         if note_data:

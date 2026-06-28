@@ -37,6 +37,11 @@ installer/
 venv/
 .venv/
 
+# API Keys / secrets (local configs with credentials)
+*.secret
+secrets/
+config.local.*
+
 # Runtime / logs
 报错日志.md
 .coverage

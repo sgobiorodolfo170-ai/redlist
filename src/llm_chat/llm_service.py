@@ -2,7 +2,6 @@ import json
 import time
 
 import requests
-
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from src.utils.logger import get_logger
@@ -25,9 +24,9 @@ class LLMService(QThread):
         self._response = None
 
     def run(self):
-        api_url = self.model_config.get('api_url', '').rstrip('/')
-        api_key = self.model_config.get('api_key', '')
-        model_name = self.model_config.get('model_name', '')
+        api_url = self.model_config.get("api_url", "").rstrip("/")
+        api_key = self.model_config.get("api_key", "")
+        model_name = self.model_config.get("model_name", "")
 
         if not api_url or not api_key or not model_name:
             self.error.emit("模型配置不完整，请检查 API 地址、Key 和模型名称")
@@ -45,12 +44,10 @@ class LLMService(QThread):
         }
 
         try:
-            self._response = requests.post(
-                url, headers=headers, json=payload, stream=True, timeout=120
-            )
+            self._response = requests.post(url, headers=headers, json=payload, stream=True, timeout=120)
             self._response.raise_for_status()
 
-            full_text = ""
+            chunks = []
             start_time = time.time()
             for line in self._response.iter_lines(decode_unicode=True):
                 if self._cancelled:
@@ -72,13 +69,13 @@ class LLMService(QThread):
                         delta = choices[0].get("delta", {})
                         content = delta.get("content", "")
                         if content:
-                            full_text += content
+                            chunks.append(content)
                             self.chunk_received.emit(content)
                     except json.JSONDecodeError:
                         continue
 
             if not self._cancelled:
-                self.finished.emit(full_text)
+                self.finished.emit("".join(chunks))
 
         except requests.exceptions.Timeout:
             self.error.emit("请求超时，请检查网络连接或 API 地址")

@@ -23,15 +23,15 @@ def write_error_log(exc_type, exc_value, exc_traceback):
     try:
         log_path = os.path.join(_get_log_dir(), ERROR_LOG)
         lines = [
-            f"# 报错日志",
-            f"",
+            "# 报错日志",
+            "",
             f"- **时间**: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             f"- **错误类型**: {exc_type.__name__}",
             f"- **错误信息**: {exc_value}",
-            f"",
-            f"## 堆栈跟踪",
-            f"",
-            f"```",
+            "",
+            "## 堆栈跟踪",
+            "",
+            "```",
         ]
         lines.extend(traceback.format_exception(exc_type, exc_value, exc_traceback))
         lines.append("```")

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QGuiApplication, QPainter, QPen
-from PyQt6.QtWidgets import QApplication, QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QDialog, QHBoxLayout, QPushButton, QWidget
 
 from src.utils.logger import get_logger
 
@@ -38,9 +38,6 @@ class ScreenshotManager:
         self.current_pixmap = None
         self.main_window = None
 
-    def get_panel(self):
-        return ScreenshotPanel(self.settings, self)
-
     def get_favorites_path(self):
         """获取截图保存路径（使用设置中的路径）"""
         # 使用设置中的截图保存路径
@@ -52,19 +49,20 @@ class ScreenshotManager:
         """开始区域截图"""
         logger.debug("Starting region screenshot...")
         # 隐藏主窗口
-        if self.main_window and hasattr(self.main_window, 'isVisible'):
+        if self.main_window and hasattr(self.main_window, "isVisible"):
             try:
                 if self.main_window.isVisible():
                     self.main_window.hide()
                     logger.debug("Main window hidden")
             except RuntimeError:
+                logger.warning("RuntimeError hiding main window during screenshot")
                 pass
 
         QTimer.singleShot(300, self._do_region_screenshot)
 
     def _do_region_screenshot(self):
         logger.debug("Creating overlay...")
-        self.overlay = ScreenshotOverlay('region')
+        self.overlay = ScreenshotOverlay("region")
         self.overlay.screenshot_taken.connect(self.on_screenshot_taken)
         self.overlay.cancelled.connect(self.on_screenshot_cancelled)
         self.overlay.showFullScreen()
@@ -80,19 +78,22 @@ class ScreenshotManager:
                 self.confirm_dialog.close()
                 self.confirm_dialog = None
         except RuntimeError:
+            logger.warning("RuntimeError closing confirm_dialog in cancel_screenshot")
             pass
 
         try:
             if self.overlay:
                 self.overlay = None
         except RuntimeError:
+            logger.warning("RuntimeError clearing overlay in cancel_screenshot")
             pass
 
         try:
-            if self.main_window and hasattr(self.main_window, 'isVisible'):
+            if self.main_window and hasattr(self.main_window, "isVisible"):
                 if not self.main_window.isVisible():
                     self.main_window.show()
         except RuntimeError:
+            logger.warning("RuntimeError showing main window in cancel_screenshot")
             pass
 
     def on_screenshot_taken(self, pixmap, rect):
@@ -176,6 +177,7 @@ class ScreenshotManager:
                 self.confirm_dialog.close()
                 self.confirm_dialog = None
         except RuntimeError:
+            logger.warning("RuntimeError closing confirm_dialog on_confirm")
             pass
 
         try:
@@ -183,6 +185,7 @@ class ScreenshotManager:
                 self.overlay.close()
                 self.overlay = None
         except RuntimeError:
+            logger.warning("RuntimeError closing overlay on_confirm")
             pass
 
         if confirmed and self.current_pixmap:
@@ -192,10 +195,11 @@ class ScreenshotManager:
         self.current_pixmap = None
 
         try:
-            if self.main_window and hasattr(self.main_window, 'isVisible'):
+            if self.main_window and hasattr(self.main_window, "isVisible"):
                 if not self.main_window.isVisible():
                     self.main_window.show()
         except RuntimeError:
+            logger.warning("RuntimeError showing main window on_confirm")
             pass
 
     def save_to_favorites(self, pixmap):
@@ -204,6 +208,7 @@ class ScreenshotManager:
 
         # 确保目录存在
         import pathlib
+
         pathlib.Path(fav_path).mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -221,25 +226,11 @@ class ScreenshotManager:
         return success
 
 
-class ScreenshotPanel(QWidget):
-    """截图面板（已不再使用，保留以防需要）"""
-    def __init__(self, settings, manager):
-        super().__init__()
-        self.settings = settings
-        self.manager = manager
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(QLabel("截图工具（点击工具栏图标使用）"))
-
-
 class ScreenshotOverlay(QWidget):
     screenshot_taken = pyqtSignal(object, object)  # (pixmap, rect)
     cancelled = pyqtSignal()
 
-    def __init__(self, mode='region'):
+    def __init__(self, mode="region"):
         super().__init__()
         self.mode = mode
         self.selection_start = None

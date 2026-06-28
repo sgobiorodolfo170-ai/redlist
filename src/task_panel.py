@@ -2,7 +2,6 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from src.utils.logger import get_logger
 
 from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen
@@ -20,6 +19,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.theme import COLORS
+from src.utils.logger import get_logger
 
 logger = get_logger("TaskPanel")
 
@@ -27,8 +28,8 @@ logger = get_logger("TaskPanel")
 class TaskCheckBox(QCheckBox):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._checked_color = '#27AE60'
-        self._hover_color = '#E74C3C'
+        self._checked_color = "#27AE60"
+        self._hover_color = "#E74C3C"
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -39,17 +40,18 @@ class TaskCheckBox(QCheckBox):
         is_hover = self.underMouse()
 
         if is_checked:
-            painter.setBrush(QColor('#27AE60'))
-            painter.setPen(QColor('#27AE60'))
+            painter.setBrush(QColor("#27AE60"))
+            painter.setPen(QColor("#27AE60"))
         else:
-            painter.setBrush(QColor('white'))
-            painter.setPen(QColor('#E74C3C' if is_hover else '#BDC3C7'))
+            painter.setBrush(QColor("white"))
+            painter.setPen(QColor("#E74C3C" if is_hover else "#BDC3C7"))
 
         painter.drawEllipse(rect.adjusted(2, 2, -2, -2))
 
         if is_checked:
-            painter.setPen(QPen(QColor('white'), 2.5, Qt.PenStyle.SolidLine,
-                                Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+            painter.setPen(
+                QPen(QColor("white"), 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
+            )
             check_rect = rect.adjusted(6, 6, -6, -6)
             painter.drawLine(check_rect.left(), check_rect.center().y(), check_rect.center().x(), check_rect.bottom())
             painter.drawLine(check_rect.center().x(), check_rect.bottom(), check_rect.right(), check_rect.top())
@@ -58,13 +60,11 @@ class TaskCheckBox(QCheckBox):
 
     def sizeHint(self):
         from PyQt6.QtCore import QSize
+
         return QSize(20, 20)
 
     def minimumSizeHint(self):
         return self.sizeHint()
-
-
-from src.theme import COLORS
 
 
 class TaskPanel(QWidget):
@@ -87,7 +87,7 @@ class TaskPanel(QWidget):
     def _get_task_file_path(self):
         path = self.settings.get_tasks_path()
         Path(path).mkdir(parents=True, exist_ok=True)
-        return Path(path) / 'tasks.json'
+        return Path(path) / "tasks.json"
 
     def refresh_path(self):
         self.task_file = self._get_task_file_path()
@@ -103,7 +103,7 @@ class TaskPanel(QWidget):
         self.header_label.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {COLORS['text_primary']};
+            color: {COLORS["text_primary"]};
             padding: 8px 0;
         """)
         layout.addWidget(self.header_label)
@@ -145,7 +145,7 @@ class TaskPanel(QWidget):
         self.task_input.setPlaceholderText("添加新任务...")
         self.task_input.setStyleSheet(f"""
             QLineEdit {{
-                border: 1px solid {COLORS['border']};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 4px;
                 padding: 10px;
                 background: white;
@@ -153,7 +153,7 @@ class TaskPanel(QWidget):
                 color: black;
             }}
             QLineEdit:focus {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
             }}
         """)
         self.task_input.returnPressed.connect(self.add_task)
@@ -163,7 +163,7 @@ class TaskPanel(QWidget):
         add_btn.setFixedHeight(36)
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -182,9 +182,9 @@ class TaskPanel(QWidget):
     def load_tasks(self):
         if self.task_file.exists():
             try:
-                with open(self.task_file, encoding='utf-8') as f:
+                with open(self.task_file, encoding="utf-8") as f:
                     data = json.load(f)
-                    self.tasks = data.get('tasks', [])
+                    self.tasks = data.get("tasks", [])
             except Exception as e:
                 logger.warning("Failed to load tasks from %s: %s", self.task_file, e)
                 self.tasks = []
@@ -194,20 +194,15 @@ class TaskPanel(QWidget):
 
     def save_tasks(self):
         Path(self.task_file).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.task_file, 'w', encoding='utf-8') as f:
-            json.dump({'tasks': self.tasks}, f, indent=2, ensure_ascii=False)
+        with open(self.task_file, "w", encoding="utf-8") as f:
+            json.dump({"tasks": self.tasks}, f, indent=2, ensure_ascii=False)
 
     def add_task(self):
         text = self.task_input.text().strip()
         if not text:
             return
 
-        task = {
-            'id': str(uuid.uuid4()),
-            'text': text,
-            'completed': False,
-            'created_at': datetime.now().isoformat()
-        }
+        task = {"id": str(uuid.uuid4()), "text": text, "completed": False, "created_at": datetime.now().isoformat()}
         self.tasks.append(task)
         self.task_input.clear()
         self.save_tasks()
@@ -217,13 +212,13 @@ class TaskPanel(QWidget):
         # 找到并切换任务状态
         task_to_move = None
         for task in self.tasks:
-            if task['id'] == task_id:
-                task['completed'] = not task['completed']
+            if task["id"] == task_id:
+                task["completed"] = not task["completed"]
                 task_to_move = task
                 break
 
         # 如果任务完成，移动到末尾
-        if task_to_move and task_to_move['completed']:
+        if task_to_move and task_to_move["completed"]:
             self.tasks.remove(task_to_move)
             self.tasks.append(task_to_move)
 
@@ -231,14 +226,14 @@ class TaskPanel(QWidget):
         self.update_task_list()
 
     def delete_task(self, task_id):
-        self.tasks = [t for t in self.tasks if t['id'] != task_id]
+        self.tasks = [t for t in self.tasks if t["id"] != task_id]
         self.save_tasks()
         self.update_task_list()
 
     def update_task_list(self):
         self.task_list.clear()
 
-        completed = sum(1 for t in self.tasks if t['completed'])
+        completed = sum(1 for t in self.tasks if t["completed"])
         total = len(self.tasks)
         self.header_label.setText(f"任务清单 ({completed}/{total} 完成)")
 
@@ -254,8 +249,8 @@ class TaskPanel(QWidget):
         widget.setFixedHeight(52)
         widget.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        is_completed = task['completed']
-        bg_color = '#F0F0F0' if is_completed else '#FFFFFF'
+        is_completed = task["completed"]
+        bg_color = "#F0F0F0" if is_completed else "#FFFFFF"
         widget.setStyleSheet(f"""
             QFrame {{
                 background: {bg_color};
@@ -312,6 +307,7 @@ class TaskPanel(QWidget):
         def double_click_event(event):
             if event.button() == Qt.MouseButton.LeftButton:
                 checkbox.setChecked(not checkbox.isChecked())
+
         widget.mouseDoubleClickEvent = double_click_event
 
         main_layout = QHBoxLayout(widget)
@@ -320,7 +316,7 @@ class TaskPanel(QWidget):
 
         color_bar = QFrame()
         color_bar.setFixedWidth(4)
-        bar_color = '#27AE60' if is_completed else '#E74C3C'
+        bar_color = "#27AE60" if is_completed else "#E74C3C"
         color_bar.setStyleSheet(f"""
             QFrame {{
                 background: {bar_color};
@@ -338,15 +334,15 @@ class TaskPanel(QWidget):
         checkbox = TaskCheckBox()
         checkbox.setChecked(is_completed)
         checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        checkbox.stateChanged.connect(lambda state: self.toggle_task(task['id']))
+        checkbox.stateChanged.connect(lambda state: self.toggle_task(task["id"]))
         content_layout.addWidget(checkbox)
 
-        label = QLabel(task['text'])
+        label = QLabel(task["text"])
         label.setWordWrap(True)
-        text_color = '#95A5A6' if is_completed else '#2C3E50'
-        font_style = 'font-size: 15px;'
+        text_color = "#95A5A6" if is_completed else "#2C3E50"
+        font_style = "font-size: 15px;"
         if is_completed:
-            font_style += ' text-decoration: line-through;'
+            font_style += " text-decoration: line-through;"
         label.setStyleSheet(f"""
             QLabel {{
                 color: {text_color};
@@ -374,7 +370,7 @@ class TaskPanel(QWidget):
                 color: #E74C3C;
             }
         """)
-        delete_btn.clicked.connect(lambda: self.delete_task(task['id']))
+        delete_btn.clicked.connect(lambda: self.delete_task(task["id"]))
         content_layout.addWidget(delete_btn)
 
         main_layout.addLayout(content_layout)

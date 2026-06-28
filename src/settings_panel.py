@@ -16,7 +16,6 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-
 from src.theme import COLORS
 from src.utils.logger import get_logger
 from src.utils.sound import play_sound
@@ -25,7 +24,6 @@ logger = get_logger("SettingsPanel")
 
 
 class SettingsPanel(QWidget):
-
     def __init__(self, settings, main_window):
         super().__init__()
         self.settings = settings
@@ -38,32 +36,32 @@ class SettingsPanel(QWidget):
                 background-color: white;
             }}
             QLabel {{
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
             }}
             QSpinBox, QLineEdit {{
                 border: none;
                 border-radius: 4px;
                 padding: 4px 6px;
-                background-color: {COLORS['background']};
-                color: {COLORS['text_primary']};
+                background-color: {COLORS["background"]};
+                color: {COLORS["text_primary"]};
                 font-size: 12px;
                 min-height: 24px;
             }}
             QSpinBox:focus, QLineEdit:focus {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
             QComboBox {{
                 border: none;
                 border-radius: 4px;
                 padding: 4px 6px;
-                background-color: {COLORS['background']};
-                color: {COLORS['text_primary']};
+                background-color: {COLORS["background"]};
+                color: {COLORS["text_primary"]};
                 font-size: 12px;
                 min-height: 24px;
             }}
             QComboBox:focus {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
             QComboBox::drop-down {{
                 border: none;
@@ -74,12 +72,12 @@ class SettingsPanel(QWidget):
                 border: none;
             }}
             QComboBox QAbstractItemView {{
-                border: 1px solid {COLORS['border']};
+                border: 1px solid {COLORS["border"]};
                 background-color: white;
-                selection-background-color: {COLORS['hover']};
+                selection-background-color: {COLORS["hover"]};
             }}
             QCheckBox {{
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
                 font-size: 13px;
                 spacing: 8px;
             }}
@@ -88,17 +86,17 @@ class SettingsPanel(QWidget):
                 height: 18px;
             }}
             QCheckBox::indicator:unchecked {{
-                border: 2px solid {COLORS['border']};
+                border: 2px solid {COLORS["border"]};
                 border-radius: 4px;
                 background-color: white;
             }}
             QCheckBox::indicator:checked {{
-                border: 2px solid {COLORS['primary']};
+                border: 2px solid {COLORS["primary"]};
                 border-radius: 4px;
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
             }}
             QCheckBox::indicator:hover {{
-                border-color: {COLORS['primary']};
+                border-color: {COLORS["primary"]};
             }}
         """)
 
@@ -110,7 +108,7 @@ class SettingsPanel(QWidget):
         header.setStyleSheet(f"""
             font-size: 16px;
             font-weight: bold;
-            color: {COLORS['text_primary']};
+            color: {COLORS["text_primary"]};
             padding: 8px 0;
         """)
         layout.addWidget(header)
@@ -125,11 +123,11 @@ class SettingsPanel(QWidget):
         sensitivity = QSpinBox()
         sensitivity.setRange(1, 20)
         sensitivity.setFixedWidth(80)
-        sensitivity.setValue(self.settings.get('dock_sensitivity', 5))
-        sensitivity.valueChanged.connect(lambda v: self.settings.set('dock_sensitivity', v))
+        sensitivity.setValue(self.settings.get("dock_sensitivity", 5))
+        sensitivity.valueChanged.connect(lambda v: self.settings.set("dock_sensitivity", v))
 
         auto_start_check = QCheckBox("开机启动")
-        auto_start_check.setChecked(self.settings.get('auto_start', False))
+        auto_start_check.setChecked(self.settings.get("auto_start", False))
         auto_start_check.toggled.connect(self._on_auto_start_changed)
 
         sensitivity_layout = QHBoxLayout()
@@ -141,11 +139,12 @@ class SettingsPanel(QWidget):
 
         screenshot_edit = QLineEdit()
         screenshot_edit.setText(self.settings.get_screenshot_path())
-        screenshot_edit.textChanged.connect(lambda v: self.settings.set('screenshot_path', v))
+        screenshot_edit.textChanged.connect(lambda v: self.settings.set("screenshot_path", v))
         screenshot_btn = self._create_browse_btn()
         screenshot_btn.clicked.connect(
-            lambda: self._browse_folder(screenshot_edit, "截图保存路径",
-                                        lambda v: self.settings.set('screenshot_path', v))
+            lambda: self._browse_folder(
+                screenshot_edit, "截图保存路径", lambda v: self.settings.set("screenshot_path", v)
+            )
         )
         screenshot_layout = QHBoxLayout()
         screenshot_layout.setSpacing(6)
@@ -165,13 +164,13 @@ class SettingsPanel(QWidget):
         form_layout.addRow("数据路径:", data_layout)
 
         sound_check = QCheckBox("定时结束播放提示音")
-        sound_check.setChecked(self.settings.get('play_sound', True))
-        sound_check.toggled.connect(lambda v: self.settings.set('play_sound', v))
+        sound_check.setChecked(self.settings.get("play_sound", True))
+        sound_check.toggled.connect(lambda v: self.settings.set("play_sound", v))
         form_layout.addRow("", sound_check)
 
         self.alarm_combo = QComboBox()
         self._load_sounds()
-        self.alarm_combo.currentTextChanged.connect(lambda v: self.settings.set('alarm_sound', v))
+        self.alarm_combo.currentTextChanged.connect(lambda v: self.settings.set("alarm_sound", v))
         test_btn = QPushButton("试听")
         test_btn.setFixedSize(50, 28)
         test_btn.setStyleSheet(self._button_style())
@@ -195,15 +194,15 @@ class SettingsPanel(QWidget):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background-color: {COLORS['background']};
-                border: 1px solid {COLORS['border']};
+                background-color: {COLORS["background"]};
+                border: 1px solid {COLORS["border"]};
                 border-radius: 4px;
                 font-size: 12px;
-                color: {COLORS['text_primary']};
+                color: {COLORS["text_primary"]};
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
-                border-color: {COLORS['primary']};
+                background-color: {COLORS["hover"]};
+                border-color: {COLORS["primary"]};
             }}
         """
 
@@ -214,7 +213,7 @@ class SettingsPanel(QWidget):
             on_change(folder)
 
     def _on_data_path_changed(self, v):
-        self.settings.set('data_path', v)
+        self.settings.set("data_path", v)
         if self.main_window.task_panel:
             self.main_window.task_panel.refresh_path()
         if self.main_window.sticky_mgr:
@@ -222,20 +221,20 @@ class SettingsPanel(QWidget):
 
     def _browse_data_folder(self):
         folder = QFileDialog.getExistingDirectory(
-            self, "选择数据保存文件夹",
-            self.data_path_edit.text() or self.settings.get_data_path()
+            self, "选择数据保存文件夹", self.data_path_edit.text() or self.settings.get_data_path()
         )
         if folder:
             self.data_path_edit.setText(folder)
 
     def _on_auto_start_changed(self, checked):
-        self.settings.set('auto_start', checked)
+        self.settings.set("auto_start", checked)
         from src.settings import set_auto_start
+
         set_auto_start(checked)
 
     def _load_sounds(self):
         sounds_dir = self.settings.get_sounds_dir()
-        sound_files = glob.glob(os.path.join(sounds_dir, '*.mid')) + glob.glob(os.path.join(sounds_dir, '*.mp3'))
+        sound_files = glob.glob(os.path.join(sounds_dir, "*.mid")) + glob.glob(os.path.join(sounds_dir, "*.mp3"))
         if sound_files:
             for sound_file in sound_files:
                 self.alarm_combo.addItem(os.path.basename(sound_file))

@@ -1,11 +1,19 @@
 import os
 import sys
 
-from PyQt6.QtCore import QRect, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QRect, Qt, QTimer
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import (
-    QApplication, QFrame, QHBoxLayout, QLabel, QMenu, QPushButton, QStackedLayout,
-    QSystemTrayIcon, QVBoxLayout, QWidget,
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QStackedLayout,
+    QSystemTrayIcon,
+    QVBoxLayout,
+    QWidget,
 )
 
 from src.theme import COLORS
@@ -16,15 +24,13 @@ logger = get_logger("MainWindow")
 
 
 class MainWindow(QWidget):
-    show_window_signal = pyqtSignal()
-
     DOCK_CHECK_INTERVAL = 200
     MOUSE_CHECK_INTERVAL = 100
 
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.current_tool = 'task'
+        self.current_tool = "task"
 
         self.dock_enabled = True
         self.is_docked = False
@@ -69,13 +75,13 @@ class MainWindow(QWidget):
         logger.info("MainWindow initialized")
 
     def _init_panels(self):
+        from src.llm_chat.chat_panel import ChatPanel
         from src.screenshot import ScreenshotManager
         from src.screenshot_translate import ScreenshotTranslatePanel
         from src.settings_panel import SettingsPanel
         from src.sticky_note.manager import StickyNoteManager
         from src.task_panel import TaskPanel
         from src.timer import TimerPanel
-        from src.llm_chat.chat_panel import ChatPanel
 
         try:
             self.task_panel = TaskPanel(self.settings)
@@ -106,8 +112,9 @@ class MainWindow(QWidget):
 
     def _start_timers(self):
         self.hide_timer.start(self.DOCK_CHECK_INTERVAL)
-        self.mouse_check_timer.start(self.MOUSE_CHECK_INTERVAL)
-        logger.debug(f"Timers started: dock={self.DOCK_CHECK_INTERVAL}ms, mouse={self.MOUSE_CHECK_INTERVAL}ms")
+        if self.is_dock_hidden:
+            self.mouse_check_timer.start(self.MOUSE_CHECK_INTERVAL)
+        logger.debug(f"Timers started: dock={self.DOCK_CHECK_INTERVAL}ms")
 
     def init_ui(self):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
@@ -117,7 +124,7 @@ class MainWindow(QWidget):
         container = QFrame()
         container.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORS['card_bg']};
+                background-color: {COLORS["card_bg"]};
                 border-radius: 8px;
                 border: 1px solid #BDC3C7;
             }}
@@ -147,11 +154,11 @@ class MainWindow(QWidget):
         self.move_to_right()
 
     def _get_icon_path(self):
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             base_path = sys._MEIPASS
         else:
             base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_path, 'app-icons', 'RedList.ico')
+        return os.path.join(base_path, "app-icons", "RedList.ico")
 
     def _set_window_icon(self):
         icon_path = self._get_icon_path()
@@ -183,7 +190,7 @@ class MainWindow(QWidget):
         self.raise_()
         self.activateWindow()
         self._start_timers()
-        if self.screenshot_translate_panel and self.current_tool == 'translate':
+        if self.screenshot_translate_panel and self.current_tool == "translate":
             self.screenshot_translate_panel.load_ocr()
 
     def quit_application(self):
@@ -194,7 +201,7 @@ class MainWindow(QWidget):
         title_bar = QFrame()
         title_bar.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
             }}
@@ -255,7 +262,7 @@ class MainWindow(QWidget):
         toolbar = QFrame()
         toolbar.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORS['background']};
+                background-color: {COLORS["background"]};
                 border-bottom: 1px solid #BDC3C7;
             }}
         """)
@@ -264,10 +271,10 @@ class MainWindow(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
 
         tools = [
-            ('task', '📖', '任务'),
-            ('note', '📝', '便利贴'),
-            ('timer', '⏱', '定时器'),
-            ('translate', '🔤', '翻译'),
+            ("task", "📖", "任务"),
+            ("note", "📝", "便利贴"),
+            ("timer", "⏱", "定时器"),
+            ("translate", "🔤", "翻译"),
         ]
 
         self.tool_buttons = {}
@@ -284,10 +291,10 @@ class MainWindow(QWidget):
                     font-size: 18px;
                 }}
                 QPushButton:hover {{
-                    background-color: {COLORS['hover']};
+                    background-color: {COLORS["hover"]};
                 }}
                 QPushButton:checked {{
-                    background-color: {COLORS['primary']};
+                    background-color: {COLORS["primary"]};
                     color: white;
                 }}
             """)
@@ -295,7 +302,7 @@ class MainWindow(QWidget):
             layout.addWidget(btn)
             self.tool_buttons[tool_id] = btn
 
-        screenshot_btn = QPushButton('📷')
+        screenshot_btn = QPushButton("📷")
         screenshot_btn.setFixedSize(40, 40)
         screenshot_btn.setToolTip("截图")
         screenshot_btn.setStyleSheet(f"""
@@ -306,13 +313,13 @@ class MainWindow(QWidget):
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
         """)
         screenshot_btn.clicked.connect(self.start_screenshot)
         layout.addWidget(screenshot_btn)
 
-        chat_btn = QPushButton('🤖')
+        chat_btn = QPushButton("🤖")
         chat_btn.setFixedSize(40, 40)
         chat_btn.setCheckable(True)
         chat_btn.setToolTip("大模型对话")
@@ -324,20 +331,20 @@ class MainWindow(QWidget):
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
             QPushButton:checked {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
             }}
         """)
-        chat_btn.clicked.connect(lambda: self.switch_tool('chat'))
+        chat_btn.clicked.connect(lambda: self.switch_tool("chat"))
         layout.addWidget(chat_btn)
-        self.tool_buttons['chat'] = chat_btn
+        self.tool_buttons["chat"] = chat_btn
 
         layout.addStretch()
 
-        settings_btn = QPushButton('⚙')
+        settings_btn = QPushButton("⚙")
         settings_btn.setFixedSize(40, 40)
         settings_btn.setCheckable(True)
         settings_btn.setToolTip("设置")
@@ -349,18 +356,18 @@ class MainWindow(QWidget):
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {COLORS['hover']};
+                background-color: {COLORS["hover"]};
             }}
             QPushButton:checked {{
-                background-color: {COLORS['primary']};
+                background-color: {COLORS["primary"]};
                 color: white;
             }}
         """)
-        settings_btn.clicked.connect(lambda: self.switch_tool('settings'))
+        settings_btn.clicked.connect(lambda: self.switch_tool("settings"))
         layout.addWidget(settings_btn)
-        self.tool_buttons['settings'] = settings_btn
+        self.tool_buttons["settings"] = settings_btn
 
-        self.tool_buttons['task'].setChecked(True)
+        self.tool_buttons["task"].setChecked(True)
 
         return toolbar
 
@@ -371,18 +378,18 @@ class MainWindow(QWidget):
             btn.setChecked(False)
         self.tool_buttons[tool_id].setChecked(True)
 
-        tool_index = ['task', 'note', 'timer', 'translate', 'chat', 'settings'].index(tool_id)
+        tool_index = ["task", "note", "timer", "translate", "chat", "settings"].index(tool_id)
         if self.stack_layout.count() > tool_index:
             self.stack_layout.setCurrentIndex(tool_index)
         self.current_tool = tool_id
 
-        if self.chat_panel and tool_id == 'chat':
+        if self.chat_panel and tool_id == "chat":
             self.chat_panel.conv_list.load_conversations()
 
         if self.screenshot_translate_panel:
-            if previous_tool == 'translate' and tool_id != 'translate':
+            if previous_tool == "translate" and tool_id != "translate":
                 self.screenshot_translate_panel.release_ocr()
-            elif tool_id == 'translate':
+            elif tool_id == "translate":
                 self.screenshot_translate_panel.load_ocr()
 
     def start_screenshot(self):
@@ -400,7 +407,12 @@ class MainWindow(QWidget):
 
     def on_mouse_release(self, event):
         self.drag_position = None
-        QTimer.singleShot(500, lambda: setattr(self, 'dock_enabled', True))
+        QTimer.singleShot(500, lambda: setattr(self, "dock_enabled", True))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.isVisible() and not self.is_dock_hidden:
+            self.mouse_check_timer.stop()
 
     def closeEvent(self, event):
         if self.tray_icon and self.tray_icon.isVisible():
@@ -420,26 +432,15 @@ class MainWindow(QWidget):
 
         self._stop_timers()
 
-        if self.task_panel and hasattr(self.task_panel, 'closeEvent'):
-            self.task_panel.closeEvent(None)
-        if self.screenshot_mgr and hasattr(self.screenshot_mgr, 'get_panel'):
-            panel = self.screenshot_mgr.get_panel()
-            if hasattr(panel, 'closeEvent'):
-                panel.closeEvent(None)
         if self.sticky_mgr:
             self.sticky_mgr.cleanup()
-        if self.timer_panel and hasattr(self.timer_panel, 'closeEvent'):
-            self.timer_panel.closeEvent(None)
+        if self.timer_panel:
+            self.timer_panel.timer.stop()
         if self.screenshot_translate_panel:
+            self.screenshot_translate_panel.clear_overlays()
             self.screenshot_translate_panel.release_ocr()
-            if hasattr(self.screenshot_translate_panel, 'closeEvent'):
-                self.screenshot_translate_panel.closeEvent(None)
-        if self.chat_panel and self.chat_panel.llm_service and self.chat_panel.llm_service.isRunning():
-            self.chat_panel.llm_service.cancel()
-            self.chat_panel.llm_service.quit()
-            self.chat_panel.llm_service.wait(1000)
-        if self.settings_panel and hasattr(self.settings_panel, 'closeEvent'):
-            self.settings_panel.closeEvent(None)
+        if self.chat_panel:
+            self.chat_panel._cleanup_llm()
 
         self.settings.flush()
         TranslationService.cleanup()
@@ -465,6 +466,7 @@ class MainWindow(QWidget):
             return
 
         from PyQt6.QtGui import QGuiApplication
+
         screen = QGuiApplication.primaryScreen()
         if not screen:
             return
@@ -472,26 +474,26 @@ class MainWindow(QWidget):
         geo = self.geometry()
         screen_geo = screen.availableGeometry()
 
-        sensitivity = self.settings.get('dock_sensitivity', 5)
+        sensitivity = self.settings.get("dock_sensitivity", 5)
 
         docked = False
         self.dock_edge = None
 
         if geo.left() <= screen_geo.left() + sensitivity:
             docked = True
-            self.dock_edge = 'left'
+            self.dock_edge = "left"
 
         if geo.right() >= screen_geo.right() - sensitivity:
             docked = True
-            self.dock_edge = 'right'
+            self.dock_edge = "right"
 
         if geo.top() <= screen_geo.top() + sensitivity:
             docked = True
-            self.dock_edge = 'top'
+            self.dock_edge = "top"
 
         if geo.bottom() >= screen_geo.bottom() - sensitivity:
             docked = True
-            self.dock_edge = 'bottom'
+            self.dock_edge = "bottom"
 
         if docked and not self.is_docked:
             self.is_docked = True
@@ -502,10 +504,12 @@ class MainWindow(QWidget):
             if not self.is_dock_hidden or self.isVisible():
                 return
         except RuntimeError:
+            logger.warning("RuntimeError in check_mouse_position")
             return
 
         try:
             from PyQt6.QtGui import QCursor
+
             pos = QCursor.pos()
 
             geo = self.geometry() if self.isVisible() else self._hide_rect
@@ -515,16 +519,16 @@ class MainWindow(QWidget):
 
             in_trigger = False
 
-            if self.dock_edge == 'left':
+            if self.dock_edge == "left":
                 if pos.x() <= geo.x() + trigger_size:
                     in_trigger = True
-            elif self.dock_edge == 'right':
+            elif self.dock_edge == "right":
                 if pos.x() >= geo.x() + geo.width() - trigger_size:
                     in_trigger = True
-            elif self.dock_edge == 'top':
+            elif self.dock_edge == "top":
                 if pos.y() <= geo.y() + trigger_size:
                     in_trigger = True
-            elif self.dock_edge == 'bottom':
+            elif self.dock_edge == "bottom":
                 if pos.y() >= geo.y() + geo.height() - trigger_size:
                     in_trigger = True
 
@@ -539,6 +543,8 @@ class MainWindow(QWidget):
     def start_hide_animation(self):
         if self.animating:
             return
+
+        self.mouse_check_timer.start(self.MOUSE_CHECK_INTERVAL)
 
         saved_edge = self.dock_edge
 
@@ -597,12 +603,13 @@ class MainWindow(QWidget):
 
     def show_from_dock(self):
         self.is_dock_hidden = False
+        self.mouse_check_timer.stop()
         self.show()
         self.animating = True
         self._show_target = self.pos()
 
         self.dock_locked = True
-        QTimer.singleShot(2000, lambda: setattr(self, 'dock_locked', False))
+        QTimer.singleShot(2000, lambda: setattr(self, "dock_locked", False))
 
         screen = self.screen()
         if screen:
