@@ -162,13 +162,16 @@
     this.camera.position.set(0, 0, 46);
 
     // 灯光：环境 + 主光 + 冷色轮廓光，塑造立体感
-    this.scene.add(new THREE.AmbientLight(0x2a1420, 1.6));
+    this.scene.add(new THREE.AmbientLight(0x606080, 0.5));
     this._keyLight = new THREE.PointLight(0xff5566, 1.4, 140);
     this._keyLight.position.set(18, 20, 30);
     this.scene.add(this._keyLight);
-    var rim = new THREE.DirectionalLight(0x4455aa, 0.8); // 冷色逆光勾边
+    var rim = new THREE.DirectionalLight(0x4455aa, 1.0); // 冷色逆光勾边
     rim.position.set(-20, -8, -18);
     this.scene.add(rim);
+    var fill = new THREE.DirectionalLight(0x88ccff, 0.35); // 底部补光
+    fill.position.set(0, -20, 10);
+    this.scene.add(fill);
 
     // 3D 心脏
     this._heartGroup = new THREE.Group();
@@ -176,8 +179,8 @@
       color: o.color,
       emissive: o.emissive,
       emissiveIntensity: 0.25,
-      roughness: 0.35,
-      metalness: 0.15
+      roughness: 0.25,
+      metalness: 0.20
     });
     var mesh = new THREE.Mesh(buildHeartGeometry(), this._material);
     mesh.rotation.z = Math.PI;      // 心形轮廓默认尖朝上，翻转朝下
@@ -199,6 +202,8 @@
 
     // 氛围粒子：缓慢上浮的微光尘埃
     if (o.particles > 0) this._initParticles(o.particles);
+    if (o.particles > 0) this._initSparkles(80);
+    this._initTrail();
 
     // 自适应容器尺寸
     var self = this;
@@ -242,6 +247,108 @@
     this.scene.add(this._particles);
   };
 
+  HeartBeat3D.prototype._initSparkles = function (count) {
+    var pos = new Float32Array(count * 3);
+    var col = new Float32Array(count * 3);
+    this._sPhase = new Float32Array(count);
+    this._sSpeed = new Float32Array(count);
+    for (var i = 0; i < count; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 80;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 50;
+      pos[i * 3 + 2] = -30 + Math.random() * 40;
+      this._sPhase[i] = Math.random() * Math.PI * 2;
+      this._sSpeed[i] = 2 + Math.random() * 4;
+      col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = 1;
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    var c = document.createElement('canvas');
+    c.width = c.height = 32;
+    var ctx = c.getContext('2d');
+    var cx = 16, cy = 16, spikes = 4, outerR = 14, innerR = 4;
+    ctx.beginPath();
+    for (var i = 0; i < spikes * 2; i++) {
+      var r = (i % 2 === 0) ? outerR : innerR;
+      var angle = (i * Math.PI / spikes) - Math.PI / 2;
+      var x = cx + r * Math.cos(angle);
+      var y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    var grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, outerR);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.4, 'rgba(255,230,240,1)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    var tex = new THREE.Texture(c);
+    tex.needsUpdate = true;
+    this._sparkles = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 1.5,
+      map: tex,
+      transparent: true,
+      opacity: 1.0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      vertexColors: true,
+      sizeAttenuation: true
+    }));
+    this.scene.add(this._sparkles);
+  };
+
+  HeartBeat3D.prototype._initTrail = function () {
+    this._trailMax = 80;
+    this._trailData = [];
+    this._trailLastX = null;
+    this._trailLastY = null;
+    var pos = new Float32Array(this._trailMax * 3);
+    var col = new Float32Array(this._trailMax * 3);
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geo.setDrawRange(0, 0);
+    this._trail = new THREE.Points(geo, new THREE.PointsMaterial({
+      size: 3.0,
+      map: makeHeartTexture(),
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.NormalBlending,
+      depthWrite: false,
+      vertexColors: true,
+      sizeAttenuation: true
+    }));
+    this.scene.add(this._trail);
+    var self = this;
+    this._onMouseMove = function (event) {
+      if (!self._running) return;
+      var rect = self.renderer.domElement.getBoundingClientRect();
+      var mx = event.clientX - rect.left;
+      var my = event.clientY - rect.top;
+      if (self._trailLastX !== null) {
+        var dx = mx - self._trailLastX, dy = my - self._trailLastY;
+        if (dx * dx + dy * dy < 25) return;
+      }
+      self._trailLastX = mx;
+      self._trailLastY = my;
+      var x = (mx / rect.width) * 2 - 1;
+      var y = -(my / rect.height) * 2 + 1;
+      var vec = new THREE.Vector3(x, y, 0.5).unproject(self.camera);
+      var dir = vec.sub(self.camera.position).normalize();
+      var dist = -self.camera.position.z / dir.z;
+      var p = self.camera.position.clone().add(dir.multiplyScalar(dist));
+      self._trailData.push({ x: p.x, y: p.y, z: p.z, age: 0 });
+      if (self._trailData.length > self._trailMax) self._trailData.shift();
+    };
+    this._onMouseLeave = function () {
+      self._trailLastX = null;
+      self._trailLastY = null;
+    };
+    var canvas = this.renderer.domElement;
+    canvas.addEventListener('mousemove', this._onMouseMove);
+    canvas.addEventListener('mouseleave', this._onMouseLeave);
+  };
+
   HeartBeat3D.prototype._update = function (dt) {
     var prevPhase = this._phase;
     this._phase += dt * this._bpm / 60;
@@ -277,6 +384,37 @@
       }
       this._particles.geometry.attributes.position.needsUpdate = true;
       this._particles.material.opacity = 0.4 + 0.3 * w;
+      this._particles.material.size = 4.5 + 0.8 * Math.sin(this._elapsed * 6);
+    }
+    if (this._sparkles) {
+      var sc = this._sparkles.geometry.attributes.color.array;
+      var scLen = this._sparkles.geometry.attributes.position.count;
+      for (var i = 0; i < scLen; i++) {
+        var b = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(this._elapsed * this._sSpeed[i] + this._sPhase[i]));
+        sc[i * 3] = sc[i * 3 + 1] = sc[i * 3 + 2] = b;
+      }
+      this._sparkles.geometry.attributes.color.needsUpdate = true;
+    }
+    if (this._trail) {
+      var td = this._trailData;
+      var tp = this._trail.geometry.attributes.position.array;
+      var tc = this._trail.geometry.attributes.color.array;
+      var alive = 0;
+      for (var i = 0; i < td.length; i++) {
+        td[i].age += dt;
+        if (td[i].age > 0.5) continue;
+        tp[alive * 3] = td[i].x;
+        tp[alive * 3 + 1] = td[i].y;
+        tp[alive * 3 + 2] = td[i].z;
+        var t = td[i].age / 0.5;
+        tc[alive * 3]     = 1.0 - t * 0.2;
+        tc[alive * 3 + 1] = 0.41 - t * 0.08;
+        tc[alive * 3 + 2] = 0.71 - t * 0.38;
+        alive++;
+      }
+      this._trail.geometry.setDrawRange(0, alive);
+      this._trail.geometry.attributes.position.needsUpdate = true;
+      this._trail.geometry.attributes.color.needsUpdate = true;
     }
   };
 
@@ -348,6 +486,21 @@
     if (this._particles) {
       this._particles.geometry.dispose();
       this._particles.material.dispose();
+    }
+    if (this._sparkles) {
+      this._sparkles.geometry.dispose();
+      this._sparkles.material.dispose();
+    }
+    if (this._trail) {
+      if (this._onMouseMove) {
+        var canvas = this.renderer && this.renderer.domElement;
+        if (canvas) {
+          canvas.removeEventListener('mousemove', this._onMouseMove);
+          canvas.removeEventListener('mouseleave', this._onMouseLeave);
+        }
+      }
+      this._trail.geometry.dispose();
+      this._trail.material.dispose();
     }
     this.renderer.dispose();
     if (this.renderer.domElement.parentNode === this.el) {
