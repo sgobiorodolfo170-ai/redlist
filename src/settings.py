@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from src.utils.debounce import Debouncer
+from src.utils.encoding import read_file_with_fallback_encoding
 from src.utils.logger import get_logger
 
 logger = get_logger("Settings")
@@ -79,6 +80,9 @@ class Settings:
         "tencent_secret_id": "",
         "tencent_secret_key": "",
         "translate_target_lang": "zh",
+        "minimize_to_tray": True,
+        "bpm_min": 60,
+        "bpm_max": 120,
         "llm_providers": [],
         "prompt_experts": [],
     }
@@ -94,24 +98,27 @@ class Settings:
         self._dirty = False
 
     def load_settings(self) -> dict:
-        if self.settings_file.exists():
-            try:
-                with open(self.settings_file, encoding="utf-8") as f:
-                    data = json.load(f)
-                    settings = self.DEFAULT_SETTINGS.copy()
-                    settings.update(data)
-                    if data.get("baidu_app_id") and not settings["baidu_nmt_app_id"]:
-                        settings["baidu_nmt_app_id"] = data["baidu_app_id"]
-                    if data.get("baidu_app_key") and not settings["baidu_nmt_app_key"]:
-                        settings["baidu_nmt_app_key"] = data["baidu_app_key"]
-                    return settings
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in settings file: {e}")
-            except PermissionError as e:
-                logger.error(f"Permission denied reading settings: {e}")
-            except Exception as e:
-                logger.exception(f"Failed to load settings: {e}")
-        return self.DEFAULT_SETTINGS.copy()
+        if not self.settings_file.exists():
+            return self.DEFAULT_SETTINGS.copy()
+
+        content, encoding, error = read_file_with_fallback_encoding(self.settings_file)
+        if error:
+            logger.warning("Failed to read settings file: %s", error)
+            return self.DEFAULT_SETTINGS.copy()
+
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error("Invalid JSON in settings file: %s", e)
+            return self.DEFAULT_SETTINGS.copy()
+
+        settings = self.DEFAULT_SETTINGS.copy()
+        settings.update(data)
+        if data.get("baidu_app_id") and not settings["baidu_nmt_app_id"]:
+            settings["baidu_nmt_app_id"] = data["baidu_app_id"]
+        if data.get("baidu_app_key") and not settings["baidu_nmt_app_key"]:
+            settings["baidu_nmt_app_key"] = data["baidu_app_key"]
+        return settings
 
     def save(self) -> None:
         try:

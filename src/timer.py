@@ -31,6 +31,10 @@ class EcgWidget(QWidget):
         self._anim_timer = QTimer()
         self._anim_timer.timeout.connect(self._tick)
         self._anim_timer.setInterval(33)
+        self._pen_trace = QPen(QColor("#000000"), 1.5)
+        self._pen_text = QPen(QColor("#000000"))
+        self._font_bpm = QFont("Consolas", 10, QFont.Weight.Bold)
+        self._path = QPainterPath()
 
     def set_bpm(self, bpm):
         self._bpm = max(30, min(200, bpm))
@@ -88,20 +92,19 @@ class EcgWidget(QWidget):
         mid = h / 2 + 50
         amp = (h - 2 * m) / 2.4
 
-        path = QPainterPath()
-        path.moveTo(0, mid - buf[0] * amp)
+        self._path = QPainterPath()
+        self._path.moveTo(0, mid - buf[0] * amp)
         for i in range(1, pw):
             x = i
             y = mid - buf[i] * amp
-            path.lineTo(x, y)
+            self._path.lineTo(x, y)
 
-        p.setPen(QPen(QColor("#000000"), 1.5))
+        p.setPen(self._pen_trace)
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawPath(path)
+        p.drawPath(self._path)
 
-        p.setPen(QColor("#000000"))
-        font = QFont("Consolas", 10, QFont.Weight.Bold)
-        p.setFont(font)
+        p.setPen(self._pen_text)
+        p.setFont(self._font_bpm)
         p.drawText(w - 80, 14, f"{self._bpm} BPM")
 
         p.end()
@@ -145,6 +148,12 @@ class HeartWidget(QWidget):
     def is_beating(self):
         return self._beating
 
+    def cleanup(self):
+        self._view.page().runJavaScript("stopHeart()")
+        self._view.page().setBackgroundColor(QColor(0, 0, 0, 0))
+        self._view.setUrl(QUrl("about:blank"))
+        self._view.deleteLater()
+
 
 class TimerPanel(QWidget):
     def __init__(self, settings):
@@ -161,13 +170,28 @@ class TimerPanel(QWidget):
         self.alarm_time = QTime(8, 0)
         self.alarm_armed = False
         self._alarm_loop_active = False
-        self.bpm_min = 60
-        self.bpm_max = 120
+        self.bpm_min = self.settings.get("bpm_min", 60)
+        self.bpm_max = self.settings.get("bpm_max", 120)
         self.current_bpm = 72
         self._bpm_vary_timer = QTimer()
         self._bpm_vary_timer.timeout.connect(self._vary_bpm)
 
         self.init_ui()
+
+    @staticmethod
+    def _btn_style(bg, hover):
+        return f"""
+            QPushButton {{
+                background-color: {bg};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }}
+            QPushButton:hover {{
+                background-color: {hover};
+            }}
+        """
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -384,18 +408,7 @@ class TimerPanel(QWidget):
 
         self.start_btn = QPushButton("开始")
         self.start_btn.setFixedHeight(40)
-        self.start_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORS["primary"]};
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-            }}
-            QPushButton:hover {{
-                background-color: #C0392B;
-            }}
-        """)
+        self.start_btn.setStyleSheet(self._btn_style("#E74C3C", "#C0392B"))
         self.start_btn.clicked.connect(self.toggle_timer)
         control_layout.addWidget(self.start_btn)
 
@@ -516,6 +529,8 @@ class TimerPanel(QWidget):
         self.heart_widget.set_bpm(mid)
         self.ecg_widget.set_bpm(mid)
         self.bpm_label.setText(f"当前心跳: {mid} BPM")
+        self.settings.set("bpm_min", self.bpm_min)
+        self.settings.set("bpm_max", self.bpm_max)
 
     def toggle_timer(self):
         if self.is_running:
@@ -540,18 +555,7 @@ class TimerPanel(QWidget):
             self._bpm_vary_timer.start(5000)
             self.is_running = True
             self.start_btn.setText("暂停")
-            self.start_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #F39C12;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background-color: #E67E22;
-                }
-            """)
+            self.start_btn.setStyleSheet(self._btn_style("#F39C12", "#E67E22"))
             self.time_label.setText(f"{mid}")
             self.bpm_min_spin.setEnabled(False)
             self.bpm_max_spin.setEnabled(False)
@@ -575,18 +579,7 @@ class TimerPanel(QWidget):
         self.is_running = True
         self.timer.start(1000)
         self.start_btn.setText("暂停")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #F39C12;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #E67E22;
-            }
-        """)
+        self.start_btn.setStyleSheet(self._btn_style("#F39C12", "#E67E22"))
         self.increase_btn.setEnabled(False)
         self.decrease_btn.setEnabled(False)
         self.time_edit.setEnabled(False)
@@ -601,36 +594,14 @@ class TimerPanel(QWidget):
             self.time_label.show()
             self._bpm_vary_timer.stop()
             self.start_btn.setText("开始")
-            self.start_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #27AE60;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background-color: #229954;
-                }
-            """)
+            self.start_btn.setStyleSheet(self._btn_style("#27AE60", "#229954"))
             self.bpm_min_spin.setEnabled(True)
             self.bpm_max_spin.setEnabled(True)
             return
 
         self.timer.stop()
         self.start_btn.setText("继续")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #27AE60;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #229954;
-            }
-        """)
+        self.start_btn.setStyleSheet(self._btn_style("#27AE60", "#229954"))
 
     def reset_timer(self):
         self.timer.stop()
@@ -668,18 +639,7 @@ class TimerPanel(QWidget):
             self.time_edit.setEnabled(True)
 
         self.start_btn.setText("开始")
-        self.start_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #E74C3C;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #C0392B;
-            }
-        """)
+        self.start_btn.setStyleSheet(self._btn_style("#E74C3C", "#C0392B"))
 
     def tick(self):
         self.remaining_seconds -= 1
@@ -744,7 +704,7 @@ class TimerPanel(QWidget):
     def closeEvent(self, event):
         self.timer.stop()
         self._bpm_vary_timer.stop()
-        self.heart_widget.set_beating(False)
+        self.heart_widget.cleanup()
         self.ecg_widget.stop()
         self._alarm_loop_active = False
         super().closeEvent(event)
