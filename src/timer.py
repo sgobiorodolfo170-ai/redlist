@@ -529,8 +529,8 @@ class TimerPanel(QWidget):
         self.heart_widget.set_bpm(mid)
         self.ecg_widget.set_bpm(mid)
         self.bpm_label.setText(f"当前心跳: {mid} BPM")
-        self.settings.set("bpm_min", self.bpm_min)
-        self.settings.set("bpm_max", self.bpm_max)
+        self.settings.set("bpm_min", self.bpm_min, True)
+        self.settings.set("bpm_max", self.bpm_max, True)
 
     def toggle_timer(self):
         if self.is_running:
