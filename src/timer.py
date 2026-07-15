@@ -52,11 +52,11 @@ class EcgWidget(QWidget):
     @staticmethod
     def _ecg_signal(phase):
         t = phase % 1.0
-        p = -0.08 * math.exp(-((t - 0.15) ** 2) / (2 * 0.008 ** 2))
-        q = -0.15 * math.exp(-((t - 0.30) ** 2) / (2 * 0.010 ** 2))
+        p = 0.15 * math.exp(-((t - 0.15) ** 2) / (2 * 0.008 ** 2))
+        q = -0.12 * math.exp(-((t - 0.30) ** 2) / (2 * 0.010 ** 2))
         r = 1.0 * math.exp(-((t - 0.35) ** 2) / (2 * 0.015 ** 2))
-        s = -0.12 * math.exp(-((t - 0.42) ** 2) / (2 * 0.012 ** 2))
-        tw = 0.2 * math.exp(-((t - 0.65) ** 2) / (2 * 0.045 ** 2))
+        s = -0.10 * math.exp(-((t - 0.42) ** 2) / (2 * 0.012 ** 2))
+        tw = 0.30 * math.exp(-((t - 0.65) ** 2) / (2 * 0.045 ** 2))
         return p + q + r + s + tw
 
     def _tick(self):
