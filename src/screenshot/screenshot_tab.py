@@ -71,7 +71,6 @@ class ScreenshotTabPanel(QWidget):
             }}
         """)
         self.screenshot_btn.clicked.connect(self._start_screenshot)
-        layout.addWidget(self.screenshot_btn)
 
         self.recording_btn = QPushButton("🎥  录屏")
         self.recording_btn.setFixedHeight(52)
@@ -93,7 +92,12 @@ class ScreenshotTabPanel(QWidget):
             }}
         """)
         self.recording_btn.clicked.connect(self._start_recording)
-        layout.addWidget(self.recording_btn)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+        btn_row.addWidget(self.screenshot_btn, 1)
+        btn_row.addWidget(self.recording_btn, 1)
+        layout.addLayout(btn_row)
 
         desc_label = QLabel("截图直接保存到截图路径，录屏保存到录屏路径")
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
