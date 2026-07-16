@@ -83,6 +83,7 @@ class Settings:
         "minimize_to_tray": True,
         "bpm_min": 60,
         "bpm_max": 120,
+        "recording_path": "",
         "llm_providers": [],
         "prompt_experts": [],
     }
@@ -158,6 +159,13 @@ class Settings:
         path = self.settings.get("screenshot_path", "")
         if not path:
             path = os.path.join(os.environ.get("USERPROFILE", ""), "Pictures", "Screenshots")
+        return path
+
+    def get_recording_path(self) -> str:
+        path = self.settings.get("recording_path", "")
+        if not path:
+            path = self.get_screenshot_path()
+        Path(path).mkdir(parents=True, exist_ok=True)
         return path
 
     def get_data_path(self) -> str:

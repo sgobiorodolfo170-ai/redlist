@@ -77,6 +77,7 @@ class MainWindow(QWidget):
     def _init_panels(self):
         from src.llm_chat.chat_panel import ChatPanel
         from src.screenshot import ScreenshotManager
+        from src.screenshot.screenshot_tab import ScreenshotTabPanel
         from src.screenshot_translate import ScreenshotTranslatePanel
         from src.settings_panel import SettingsPanel
         from src.sticky_note.manager import StickyNoteManager
@@ -99,6 +100,9 @@ class MainWindow(QWidget):
 
             self.screenshot_translate_panel = ScreenshotTranslatePanel(self.settings, self.sticky_mgr, self)
             self.stack_layout.addWidget(self.screenshot_translate_panel)
+
+            self.screenshot_tab_panel = ScreenshotTabPanel(self.settings, self.screenshot_mgr, self)
+            self.stack_layout.addWidget(self.screenshot_tab_panel)
 
             self.chat_panel = ChatPanel(self.settings, self)
             self.stack_layout.addWidget(self.chat_panel)
@@ -275,6 +279,7 @@ class MainWindow(QWidget):
             ("note", "📝", "便利贴"),
             ("timer", "⏱", "定时器"),
             ("translate", "🔤", "翻译"),
+            ("screenshot", "📷", "截图"),
         ]
 
         self.tool_buttons = {}
@@ -301,23 +306,6 @@ class MainWindow(QWidget):
             btn.clicked.connect(lambda checked, t=tool_id: self.switch_tool(t))
             layout.addWidget(btn)
             self.tool_buttons[tool_id] = btn
-
-        screenshot_btn = QPushButton("📷")
-        screenshot_btn.setFixedSize(40, 40)
-        screenshot_btn.setToolTip("截图")
-        screenshot_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                border: none;
-                border-radius: 4px;
-                font-size: 18px;
-            }}
-            QPushButton:hover {{
-                background-color: {COLORS["hover"]};
-            }}
-        """)
-        screenshot_btn.clicked.connect(self.start_screenshot)
-        layout.addWidget(screenshot_btn)
 
         chat_btn = QPushButton("🤖")
         chat_btn.setFixedSize(40, 40)
@@ -378,7 +366,7 @@ class MainWindow(QWidget):
             btn.setChecked(False)
         self.tool_buttons[tool_id].setChecked(True)
 
-        tool_index = ["task", "note", "timer", "translate", "chat", "settings"].index(tool_id)
+        tool_index = ["task", "note", "timer", "translate", "screenshot", "chat", "settings"].index(tool_id)
         if self.stack_layout.count() > tool_index:
             self.stack_layout.setCurrentIndex(tool_index)
         self.current_tool = tool_id
@@ -415,7 +403,7 @@ class MainWindow(QWidget):
             self.mouse_check_timer.stop()
 
     def closeEvent(self, event):
-        if self.tray_icon and self.tray_icon.isVisible():
+        if self.tray_icon and self.tray_icon.isVisible() and self.settings.get("minimize_to_tray", True):
             logger.info("MainWindow hiding to tray")
             self._stop_timers()
             if self.screenshot_translate_panel:
@@ -424,7 +412,7 @@ class MainWindow(QWidget):
             self.hide()
             event.ignore()
         else:
-            self._do_cleanup()
+            self.quit_application()
             event.accept()
 
     def _do_cleanup(self):

@@ -137,6 +137,11 @@ class SettingsPanel(QWidget):
         sensitivity_layout.addStretch()
         form_layout.addRow("停靠灵敏度:", sensitivity_layout)
 
+        minimize_tray_check = QCheckBox("关闭时存入托盘")
+        minimize_tray_check.setChecked(self.settings.get("minimize_to_tray", True))
+        minimize_tray_check.toggled.connect(self._on_minimize_to_tray_changed)
+        sensitivity_layout.addWidget(minimize_tray_check)
+
         screenshot_edit = QLineEdit()
         screenshot_edit.setText(self.settings.get_screenshot_path())
         screenshot_edit.textChanged.connect(lambda v: self.settings.set("screenshot_path", v))
@@ -151,6 +156,21 @@ class SettingsPanel(QWidget):
         screenshot_layout.addWidget(screenshot_edit, 1)
         screenshot_layout.addWidget(screenshot_btn)
         form_layout.addRow("截图路径:", screenshot_layout)
+
+        recording_edit = QLineEdit()
+        recording_edit.setText(self.settings.get_recording_path())
+        recording_edit.textChanged.connect(lambda v: self.settings.set("recording_path", v))
+        recording_btn = self._create_browse_btn()
+        recording_btn.clicked.connect(
+            lambda: self._browse_folder(
+                recording_edit, "录屏保存路径", lambda v: self.settings.set("recording_path", v)
+            )
+        )
+        recording_layout = QHBoxLayout()
+        recording_layout.setSpacing(6)
+        recording_layout.addWidget(recording_edit, 1)
+        recording_layout.addWidget(recording_btn)
+        form_layout.addRow("录屏路径:", recording_layout)
 
         self.data_path_edit = QLineEdit()
         self.data_path_edit.setText(self.settings.get_data_path())
@@ -182,7 +202,6 @@ class SettingsPanel(QWidget):
         form_layout.addRow("提示铃声:", alarm_layout)
 
         layout.addLayout(form_layout)
-
         layout.addStretch()
 
     def _create_browse_btn(self):
@@ -231,6 +250,9 @@ class SettingsPanel(QWidget):
         from src.settings import set_auto_start
 
         set_auto_start(checked)
+
+    def _on_minimize_to_tray_changed(self, checked):
+        self.settings.set("minimize_to_tray", checked)
 
     def _load_sounds(self):
         sounds_dir = self.settings.get_sounds_dir()
