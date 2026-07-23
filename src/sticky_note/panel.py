@@ -59,7 +59,7 @@ class StickyNotePanel(QWidget):
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
         self.cards_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.cards_layout.setSpacing(4)
+        self.cards_layout.setSpacing(2)
 
         scroll.setWidget(self.cards_container)
         layout.addWidget(scroll)
@@ -129,7 +129,7 @@ class StickyNotePanel(QWidget):
             QFrame {{
                 background-color: {bg_color};
                 border-radius: 4px;
-                margin: 2px 0;
+                margin: 0;
                 border: none;
             }}
         """)
@@ -174,7 +174,7 @@ class StickyNotePanel(QWidget):
                 QFrame {{
                     background-color: {bg_color};
                     border-radius: 4px;
-                    margin: 2px 0;
+                    margin: 0;
                     border: none;
                 }}
             """)

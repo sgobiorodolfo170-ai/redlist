@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.theme import COLORS
+from src.utils.encoding import ensure_utf8
 from src.utils.logger import get_logger
 
 logger = get_logger("ChatDisplay")
@@ -257,9 +258,16 @@ class ChatDisplay(QScrollArea):
 
     def append_message(self, role, content):
         self.welcome_label.hide()
-        text = self._format_content(content) if isinstance(content, str) else self._format_multimodal(content)
+        # Defensively ensure content is valid UTF-8 before rendering
+        safe_content = ensure_utf8(content) if isinstance(content, str) else content
+        text = (
+            self._format_content(safe_content)
+            if isinstance(safe_content, str)
+            else self._format_multimodal(safe_content)
+        )
         bubble = self._make_bubble(role)
-        bubble._raw_text = content if isinstance(content, str) else str(content)
+        # Store sanitized text for copy/export to avoid mojibake in clipboard/files
+        bubble._raw_text = safe_content if isinstance(safe_content, str) else str(safe_content)
         bubble.setHtml(text)
         bubble.document().setDocumentMargin(0)
         self._clean_document_spacing(bubble.document())
@@ -332,7 +340,9 @@ class ChatDisplay(QScrollArea):
         if self.temp_bubble is None:
             return
         try:
-            new_html = self._format_content(text)
+            # Defensively ensure text is valid UTF-8 before rendering
+            safe_text = ensure_utf8(text)
+            new_html = self._format_content(safe_text)
             self.temp_bubble.setHtml(new_html)
             self.temp_bubble.document().setDocumentMargin(0)
             self._clean_document_spacing(self.temp_bubble.document())

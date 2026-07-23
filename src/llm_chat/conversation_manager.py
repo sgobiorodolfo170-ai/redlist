@@ -3,6 +3,7 @@ import os
 import time
 from pathlib import Path
 
+from src.utils.encoding import read_file_with_fallback_encoding
 from src.utils.logger import get_logger
 
 logger = get_logger("ConversationManager")
@@ -55,22 +56,27 @@ class ConversationManager:
                     )
                     continue
                 try:
-                    with open(f, encoding="utf-8") as fh:
-                        data = json.load(fh)
-                        if len(self._conv_cache) < self._CACHE_MAX_SIZE:
-                            self._conv_cache[conv_id] = data
-                        convs.append(
-                            {
-                                "id": data.get("id", conv_id),
-                                "title": data.get("title", "未命名会话"),
-                                "created_at": data.get("created_at", ""),
-                                "updated_at": data.get("updated_at", ""),
-                                "model_name": data.get("model", {}).get("name", ""),
-                                "message_count": len(data.get("messages", [])),
-                            }
-                        )
+                    content, enc, err = read_file_with_fallback_encoding(f)
+                    if err:
+                        logger.warning("Failed to load conversation %s: %s", f, err)
+                        continue
+                    data = json.loads(content)
+                    if len(self._conv_cache) < self._CACHE_MAX_SIZE:
+                        self._conv_cache[conv_id] = data
+                    convs.append(
+                        {
+                            "id": data.get("id", conv_id),
+                            "title": data.get("title", "未命名会话"),
+                            "created_at": data.get("created_at", ""),
+                            "updated_at": data.get("updated_at", ""),
+                            "model_name": data.get("model", {}).get("name", ""),
+                            "message_count": len(data.get("messages", [])),
+                        }
+                    )
+                except json.JSONDecodeError as e:
+                    logger.warning("Invalid JSON in conversation %s: %s", f, e)
                 except Exception as e:
-                    logger.warning(f"Failed to load conversation {f}: {e}")
+                    logger.warning("Failed to load conversation %s: %s", f, e)
 
         self._list_cache = convs
         self._list_cache_time = now
@@ -97,13 +103,19 @@ class ConversationManager:
         if not path.exists():
             return None
         try:
-            with open(path, encoding="utf-8") as f:
-                data = json.load(f)
-                if len(self._conv_cache) < self._CACHE_MAX_SIZE:
-                    self._conv_cache[conv_id] = data
-                return data
+            content, enc, err = read_file_with_fallback_encoding(path)
+            if err:
+                logger.error("Failed to load conversation %s: %s", conv_id, err)
+                return None
+            data = json.loads(content)
+            if len(self._conv_cache) < self._CACHE_MAX_SIZE:
+                self._conv_cache[conv_id] = data
+            return data
+        except json.JSONDecodeError as e:
+            logger.error("Invalid JSON in conversation %s: %s", conv_id, e)
+            return None
         except Exception as e:
-            logger.error(f"Failed to load conversation {conv_id}: {e}")
+            logger.error("Failed to load conversation %s: %s", conv_id, e)
             return None
 
     def save_message(self, conv_id, messages):

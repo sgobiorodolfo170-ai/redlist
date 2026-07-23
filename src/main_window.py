@@ -277,7 +277,7 @@ class MainWindow(QWidget):
         tools = [
             ("task", "📖", "任务"),
             ("note", "📝", "便利贴"),
-            ("timer", "⏱", "定时器"),
+            ("timer", "⏱", "时钟"),
             ("translate", "🔤", "翻译"),
             ("screenshot", "📷", "截图"),
         ]

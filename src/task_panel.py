@@ -254,7 +254,7 @@ class TaskPanel(QWidget):
         widget.setStyleSheet(f"""
             QFrame {{
                 background: {bg_color};
-                margin: 4px 2px;
+                margin: 2px 2px;
                 padding: 0;
                 border: 1px solid #E74C3C;
                 border-radius: 8px;
@@ -274,7 +274,7 @@ class TaskPanel(QWidget):
                 widget.setStyleSheet("""
                     QFrame {
                         background: #FFFFFF;
-                        margin: 4px 2px;
+                        margin: 2px 2px;
                         padding: 0;
                         border: 1px solid #E74C3C;
                         border-radius: 8px;
@@ -290,7 +290,7 @@ class TaskPanel(QWidget):
                 widget.setStyleSheet("""
                     QFrame {
                         background: #FFFFFF;
-                        margin: 4px 2px;
+                        margin: 2px 2px;
                         padding: 0;
                         border: 1px solid #E74C3C;
                         border-radius: 8px;
@@ -339,6 +339,7 @@ class TaskPanel(QWidget):
 
         label = QLabel(task["text"])
         label.setWordWrap(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         text_color = "#95A5A6" if is_completed else "#2C3E50"
         font_style = "font-size: 15px;"
         if is_completed:

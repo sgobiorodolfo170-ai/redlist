@@ -38,6 +38,7 @@ class OCRService:
     _cancel_load: bool
     _pending_callback: Optional[Callable]
     _initialized: bool
+    _init_error: Optional[str]
 
     def __new__(cls, use_gpu: bool = False):
         with cls._instance_lock:
@@ -50,6 +51,7 @@ class OCRService:
                 inst._cancel_load = False
                 inst._pending_callback = None
                 inst._initialized = True
+                inst._init_error = None
                 cls._instance = inst
             return cls._instance
 
@@ -58,6 +60,7 @@ class OCRService:
 
     def load_async(self, callback: Optional[Callable] = None):
         with self._lock:
+            self._init_error = None
             if self._loading:
                 self._pending_callback = callback
                 logger.debug("[OCR] Already loading, will notify latest caller")
@@ -96,19 +99,23 @@ class OCRService:
                 if cb:
                     cb(True)
             except ImportError as e:
+                err_msg = f"PaddleOCR 导入失败：{e}"
                 with self._lock:
                     self._loading = False
+                    self._init_error = err_msg
                     cb = self._pending_callback
                     self._pending_callback = None
-                logger.error(f"[OCR] ImportError: {e}")
+                logger.error(f"[OCR] {err_msg}")
                 if cb:
                     cb(False)
             except Exception as e:
+                err_msg = f"PaddleOCR 加载失败：{e}"
                 with self._lock:
                     self._loading = False
+                    self._init_error = err_msg
                     cb = self._pending_callback
                     self._pending_callback = None
-                logger.exception(f"[OCR] Load failed: {e}")
+                logger.exception(f"[OCR] {err_msg}")
                 if cb:
                     cb(False)
 
@@ -118,6 +125,7 @@ class OCRService:
     def release(self):
         with self._lock:
             self._cancel_load = True
+            self._init_error = None
             if self._ocr is not None:
                 logger.info("[OCR] Releasing OCR memory...")
                 for name in ("text_detector", "text_recognizer", "text_classifier"):
@@ -141,7 +149,8 @@ class OCRService:
             return self._ocr is not None
 
     def get_init_error(self) -> Optional[str]:
-        return None
+        with self._lock:
+            return self._init_error
 
     def is_available(self) -> bool:
         with self._lock:

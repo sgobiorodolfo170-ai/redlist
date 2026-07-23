@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
 from PyQt6.QtCore import QRect
 
 from src.ocr.ocr_service import TextBlock

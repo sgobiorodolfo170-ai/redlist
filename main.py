@@ -5,6 +5,7 @@ import sys
 import traceback
 
 from PyQt6.QtGui import QIcon
+from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from src.main_window import MainWindow

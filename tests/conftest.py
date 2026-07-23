@@ -2,6 +2,8 @@ import sys
 from pathlib import Path
 
 import pytest
+from PyQt6.QtWidgets import QApplication
+
 
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 if str(SRC_DIR) not in sys.path:
@@ -15,3 +17,11 @@ def pytest_configure(config):
 @pytest.fixture
 def temp_dir(tmp_path):
     return tmp_path
+
+
+@pytest.fixture(scope="session", autouse=True)
+def qapp():
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+    yield app

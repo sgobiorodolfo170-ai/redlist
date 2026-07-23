@@ -5,10 +5,10 @@ import sys
 import time as _time
 import threading as _th
 
-from PyQt6.QtCore import QTimer, QTime, QUrl, Qt
+from PyQt6.QtCore import QDate, QTimer, QTime, QUrl, Qt
 from PyQt6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QPushButton, QSpinBox, QTimeEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QAbstractItemView, QCalendarWidget, QFrame, QHBoxLayout, QHeaderView, QLabel, QMessageBox, QProgressBar, QPushButton, QSpinBox, QTableWidget, QTableWidgetItem, QTimeEdit, QVBoxLayout, QWidget
 
 from src.theme import COLORS
 from src.utils.logger import get_logger
@@ -170,6 +170,10 @@ class TimerPanel(QWidget):
         self.alarm_time = QTime(8, 0)
         self.alarm_armed = False
         self._alarm_loop_active = False
+        self.alarm_tasks = []
+        self._alarm_id_counter = 0
+        self.alarm_check_timer = QTimer()
+        self.alarm_check_timer.timeout.connect(self._check_alarms)
         self.bpm_min = self.settings.get("bpm_min", 60)
         self.bpm_max = self.settings.get("bpm_max", 120)
         self.current_bpm = 72
@@ -197,7 +201,7 @@ class TimerPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 8, 16, 16)
 
-        header = QLabel("定时器")
+        header = QLabel("时钟")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.setStyleSheet(f"""
             font-size: 16px;
@@ -284,13 +288,35 @@ class TimerPanel(QWidget):
         layout.addWidget(self.input_frame)
 
         self.alarm_frame = QFrame()
-        alarm_input_layout = QHBoxLayout(self.alarm_frame)
-        alarm_input_layout.setContentsMargins(0, 12, 0, 12)
-        alarm_input_layout.setSpacing(8)
+        alarm_main_layout = QVBoxLayout(self.alarm_frame)
+        alarm_main_layout.setContentsMargins(0, 8, 0, 0)
+        alarm_main_layout.setSpacing(8)
 
-        alarm_label = QLabel("闹铃时间:")
-        alarm_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 13px;")
-        alarm_input_layout.addWidget(alarm_label)
+        alarm_top_row = QHBoxLayout()
+        alarm_top_row.setSpacing(12)
+
+        self.calendar = QCalendarWidget()
+        self.calendar.setFixedSize(260, 200)
+        self.calendar.setGridVisible(True)
+        self.calendar.setStyleSheet(f"""
+            QCalendarWidget {{
+                background-color: white;
+                border: 1px solid #BDC3C7;
+                border-radius: 4px;
+            }}
+            QCalendarWidget QAbstractItemView:enabled {{
+                color: {COLORS["text_primary"]};
+                selection-background-color: {COLORS["primary"]};
+            }}
+        """)
+        alarm_top_row.addWidget(self.calendar)
+
+        alarm_right_col = QVBoxLayout()
+        alarm_right_col.setSpacing(8)
+
+        alarm_time_label = QLabel("闹铃时间:")
+        alarm_time_label.setStyleSheet(f"color: {COLORS['text_secondary']}; font-size: 13px;")
+        alarm_right_col.addWidget(alarm_time_label)
 
         self.time_edit = QTimeEdit()
         self.time_edit.setDisplayFormat("HH:mm")
@@ -307,9 +333,67 @@ class TimerPanel(QWidget):
                 padding: 4px;
             }}
         """)
-        alarm_input_layout.addWidget(self.time_edit)
+        alarm_right_col.addWidget(self.time_edit)
 
-        alarm_input_layout.addStretch()
+        self.add_alarm_btn = QPushButton("➕ 添加闹铃")
+        self.add_alarm_btn.setFixedHeight(36)
+        self.add_alarm_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORS["primary"]};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 13px;
+                font-weight: bold;
+                padding: 0 16px;
+            }}
+            QPushButton:hover {{
+                background-color: #C0392B;
+            }}
+        """)
+        self.add_alarm_btn.clicked.connect(self.add_alarm_task)
+        alarm_right_col.addWidget(self.add_alarm_btn)
+
+        alarm_right_col.addStretch()
+        alarm_top_row.addLayout(alarm_right_col)
+        alarm_top_row.addStretch()
+        alarm_main_layout.addLayout(alarm_top_row)
+
+        self.alarm_table = QTableWidget()
+        self.alarm_table.setColumnCount(4)
+        self.alarm_table.setHorizontalHeaderLabels(["日期", "时间", "状态", "操作"])
+        self.alarm_table.horizontalHeader().setStretchLastSection(False)
+        self.alarm_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.alarm_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.alarm_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.alarm_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.alarm_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.alarm_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.alarm_table.verticalHeader().setVisible(False)
+        self.alarm_table.setFixedHeight(160)
+        self.alarm_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: white;
+                border: 1px solid #BDC3C7;
+                border-radius: 4px;
+                font-size: 13px;
+                color: {COLORS["text_primary"]};
+            }}
+            QTableWidget::item {{
+                padding: 4px 8px;
+            }}
+            QHeaderView::section {{
+                background-color: {COLORS["background"]};
+                color: {COLORS["text_primary"]};
+                border: none;
+                border-bottom: 1px solid #BDC3C7;
+                font-weight: bold;
+                font-size: 12px;
+                padding: 6px 8px;
+            }}
+        """)
+        alarm_main_layout.addWidget(self.alarm_table)
+
         self.alarm_frame.setVisible(False)
         layout.addWidget(self.alarm_frame)
 
@@ -501,16 +585,19 @@ class TimerPanel(QWidget):
         self.alarm_btn.setChecked(mode == "alarm")
         self.heartbeat_btn.setChecked(mode == "heartbeat")
 
-        self.input_frame.setVisible(mode == "pomodoro")
-        self.alarm_frame.setVisible(mode == "alarm")
-        self.heartbeat_frame.setVisible(mode == "heartbeat")
-
+        is_pomodoro = (mode == "pomodoro")
+        is_alarm = (mode == "alarm")
         is_hb = (mode == "heartbeat")
-        self.is_alarm = (mode == "alarm")
+
+        self.input_frame.setVisible(is_pomodoro)
+        self.alarm_frame.setVisible(is_alarm)
+        self.heartbeat_frame.setVisible(is_hb)
+
+        self.is_alarm = is_alarm
         self.is_heartbeat = is_hb
         self.ecg_widget.setVisible(is_hb)
-        self.time_label.setVisible(not is_hb)
-        self.progress.setVisible(not is_hb)
+        self.time_label.setVisible(is_pomodoro)
+        self.progress.setVisible(is_pomodoro)
 
         self.reset_timer()
 
@@ -561,20 +648,18 @@ class TimerPanel(QWidget):
             self.bpm_max_spin.setEnabled(False)
             return
 
+        if self.is_alarm:
+            if not self.alarm_tasks:
+                return
+            self.is_running = True
+            self.alarm_check_timer.start(1000)
+            self.start_btn.setText("暂停")
+            self.start_btn.setStyleSheet(self._btn_style("#F39C12", "#E67E22"))
+            return
+
         if self.remaining_seconds == 0:
-            if self.is_alarm:
-                now = QTime.currentTime()
-                alarm = self.time_edit.time()
-                secs_now = now.hour() * 3600 + now.minute() * 60 + now.second()
-                secs_alarm = alarm.hour() * 3600 + alarm.minute() * 60
-                if secs_alarm <= secs_now:
-                    secs_alarm += 24 * 3600
-                self.total_seconds = secs_alarm - secs_now
-                self.remaining_seconds = self.total_seconds
-                self.alarm_armed = True
-            else:
-                self.total_seconds = self.minutes_value * 60
-                self.remaining_seconds = self.total_seconds
+            self.total_seconds = self.minutes_value * 60
+            self.remaining_seconds = self.total_seconds
 
         self.is_running = True
         self.timer.start(1000)
@@ -582,7 +667,6 @@ class TimerPanel(QWidget):
         self.start_btn.setStyleSheet(self._btn_style("#F39C12", "#E67E22"))
         self.increase_btn.setEnabled(False)
         self.decrease_btn.setEnabled(False)
-        self.time_edit.setEnabled(False)
 
     def pause_timer(self):
         self.is_running = False
@@ -599,16 +683,22 @@ class TimerPanel(QWidget):
             self.bpm_max_spin.setEnabled(True)
             return
 
+        if self.is_alarm:
+            self.alarm_check_timer.stop()
+            self.start_btn.setText("开始")
+            self.start_btn.setStyleSheet(self._btn_style("#27AE60", "#229954"))
+            return
+
         self.timer.stop()
         self.start_btn.setText("继续")
         self.start_btn.setStyleSheet(self._btn_style("#27AE60", "#229954"))
 
     def reset_timer(self):
         self.timer.stop()
+        self.alarm_check_timer.stop()
         self._bpm_vary_timer.stop()
         self.heart_widget.set_beating(False)
         self.is_running = False
-        self.alarm_armed = False
 
         if self.is_heartbeat:
             self.bpm_min = self.bpm_min_spin.value()
@@ -623,20 +713,13 @@ class TimerPanel(QWidget):
             self.bpm_min_spin.setEnabled(True)
             self.bpm_max_spin.setEnabled(True)
         elif self.is_alarm:
-            alarm = self.time_edit.time()
-            self.alarm_time = alarm
-            self.total_seconds = 0
-            self.remaining_seconds = 0
-            self.time_label.setText(alarm.toString("HH:mm"))
-            self.progress.setValue(0)
-            self.time_edit.setEnabled(True)
+            pass
         else:
             self.total_seconds = self.minutes_value * 60
             self.remaining_seconds = self.total_seconds
             self.update_display()
             self.increase_btn.setEnabled(True)
             self.decrease_btn.setEnabled(True)
-            self.time_edit.setEnabled(True)
 
         self.start_btn.setText("开始")
         self.start_btn.setStyleSheet(self._btn_style("#E74C3C", "#C0392B"))
@@ -665,21 +748,82 @@ class TimerPanel(QWidget):
         self.bpm_label.setText(f"当前心跳: {new_bpm} BPM")
         self.time_label.setText(f"{new_bpm}")
 
+    def add_alarm_task(self):
+        date = self.calendar.selectedDate()
+        time = self.time_edit.time()
+        now = QDate.currentDate()
+        if date < now or (date == now and time <= QTime.currentTime()):
+            QMessageBox.warning(self, "提示", "闹铃时间必须晚于当前时间")
+            return
+        for t in self.alarm_tasks:
+            if t["date"] == date and t["time"] == time and not t["triggered"]:
+                QMessageBox.warning(self, "提示", "该时间已存在闹铃任务")
+                return
+        self._alarm_id_counter += 1
+        self.alarm_tasks.append({
+            "id": self._alarm_id_counter,
+            "date": date,
+            "time": time,
+            "triggered": False,
+        })
+        self._refresh_alarm_table()
+
+    def _remove_alarm_task(self, task_id):
+        self.alarm_tasks = [t for t in self.alarm_tasks if t["id"] != task_id]
+        self._refresh_alarm_table()
+
+    def _refresh_alarm_table(self):
+        self.alarm_table.setRowCount(0)
+        for task in self.alarm_tasks:
+            row = self.alarm_table.rowCount()
+            self.alarm_table.insertRow(row)
+            self.alarm_table.setItem(row, 0, QTableWidgetItem(task["date"].toString("yyyy-MM-dd")))
+            self.alarm_table.setItem(row, 1, QTableWidgetItem(task["time"].toString("HH:mm")))
+            status = "已响铃" if task["triggered"] else "等待中"
+            status_item = QTableWidgetItem(status)
+            status_item.setForeground(QColor("#27AE60" if task["triggered"] else "#E67E22"))
+            self.alarm_table.setItem(row, 2, status_item)
+            del_btn = QPushButton("✕")
+            del_btn.setFixedSize(28, 28)
+            del_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: #E74C3C;
+                    border: 1px solid #E74C3C;
+                    border-radius: 4px;
+                    font-size: 12px;
+                }}
+                QPushButton:hover {{
+                    background-color: #E74C3C;
+                    color: white;
+                }}
+            """)
+            del_btn.clicked.connect(lambda checked, tid=task["id"]: self._remove_alarm_task(tid))
+            self.alarm_table.setCellWidget(row, 3, del_btn)
+
+    def _check_alarms(self):
+        now = QDate.currentDate()
+        now_t = QTime.currentTime()
+        for task in self.alarm_tasks:
+            if task["triggered"]:
+                continue
+            if task["date"] == now and task["time"].hour() == now_t.hour() and task["time"].minute() == now_t.minute():
+                task["triggered"] = True
+                self._refresh_alarm_table()
+                if self.settings.get("play_sound", True):
+                    self._alarm_loop_active = True
+                    def _loop():
+                        while self._alarm_loop_active:
+                            self._play_alarm_once()
+                            _time.sleep(3)
+                    _th.Thread(target=_loop, daemon=True).start()
+                self.show_finish_dialog(f'闹铃时间到！{task["date"].toString("yyyy-MM-dd")} {task["time"].toString("HH:mm")}', "关闭")
+                self._alarm_loop_active = False
+
     def on_timer_finished(self):
-        if self.is_alarm:
-            if self.settings.get("play_sound", True):
-                self._alarm_loop_active = True
-                def _loop():
-                    while self._alarm_loop_active:
-                        self._play_alarm_once()
-                        _time.sleep(3)
-                _th.Thread(target=_loop, daemon=True).start()
-            self.show_finish_dialog("闹铃时间到！", "关闭")
-            self._alarm_loop_active = False
-        else:
-            if self.settings.get("play_sound", True):
-                self._play_alarm_once()
-            self.show_finish_dialog("时间到！", "确定")
+        if self.settings.get("play_sound", True):
+            self._play_alarm_once()
+        self.show_finish_dialog("时间到！", "确定")
 
     def _play_alarm_once(self):
         try:
@@ -703,6 +847,7 @@ class TimerPanel(QWidget):
 
     def closeEvent(self, event):
         self.timer.stop()
+        self.alarm_check_timer.stop()
         self._bpm_vary_timer.stop()
         self.heart_widget.cleanup()
         self.ecg_widget.stop()

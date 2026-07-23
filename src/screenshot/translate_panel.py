@@ -472,6 +472,8 @@ class ScreenshotTranslatePanel(QWidget):
         else:
             self.translate_btn.setEnabled(False)
             self.translate_btn.setText("OCR不可用")
+            err = self.ocr_service.get_init_error() or "未知错误"
+            _write_error_log(f"OCR 初始化失败：{err}")
 
     def release_ocr(self):
         self._ocr_load_timer.stop()

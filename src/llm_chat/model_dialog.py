@@ -11,17 +11,18 @@ from PyQt6.QtWidgets import (
 )
 
 from src.llm_chat.chinese_menu import _setup_chinese_context_menu
+from src.llm_chat.config import ModelConfig
 from src.theme import COLORS
 
 
 class ModelDialog(QDialog):
     def __init__(self, parent=None, edit_data=None):
         super().__init__(parent)
-        self.setWindowTitle("自定义模型提供商")
+        self.edit_data = edit_data
+        self.setWindowTitle("编辑模型提供商" if self.edit_data else "自定义模型提供商")
         self.setFixedSize(420, 260)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self._result = None
-        self.edit_data = edit_data
         self.init_ui()
 
     def init_ui(self):
@@ -51,10 +52,6 @@ class ModelDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
-
-        title = QLabel("自定义模型提供商")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORS['text_primary']};")
-        layout.addWidget(title)
 
         desc = QLabel("填写兼容 OpenAI 接口的 API 地址和密钥")
         desc.setStyleSheet(f"font-size: 12px; color: {COLORS['text_secondary']};")
@@ -130,15 +127,14 @@ class ModelDialog(QDialog):
         url = self.url_edit.text().strip()
         key = self.key_edit.text().strip()
         model = self.model_edit.text().strip()
-        if not url or not key or not model:
-            QMessageBox.warning(self, "提示", "请填写完整的接口地址、API Key 和模型名称")
-            return
-        if not url.startswith("https://") and not url.startswith("http://"):
-            QMessageBox.warning(self, "提示", "接口地址请以 http:// 或 https:// 开头")
-            return
         name = model
-        self._result = {"name": name, "api_url": url.rstrip("/"), "api_key": key, "model_name": model}
-        self.accept()
+        raw = {"name": name, "api_url": url, "api_key": key, "model_name": model}
+        try:
+            validated = ModelConfig(**raw)
+            self._result = validated.to_dict()
+            self.accept()
+        except Exception as e:
+            QMessageBox.warning(self, "配置无效", str(e))
 
     def get_result(self):
         return self._result

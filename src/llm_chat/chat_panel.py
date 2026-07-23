@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QFrame, QSplitter, QVBoxLayout, QWidget
 from src.llm_chat.chat_display import ChatDisplay
 from src.llm_chat.conversation_list import ConversationList
 from src.llm_chat.conversation_manager import ConversationManager
+from src.llm_chat.exceptions import parse_error_signal
 from src.llm_chat.input_bar import InputBar
 from src.llm_chat.llm_service import LLMService
 from src.theme import COLORS
@@ -247,13 +248,28 @@ class ChatPanel(QWidget):
     def on_llm_error(self, error_msg):
         if self.sender() is not self.llm_service:
             return
-        self.chat_display.update_temp_bubble(f"\n\n[错误] {error_msg}")
+        code, message = parse_error_signal(error_msg)
+        logger.error("[%s] %s", code, message)
+
+        if code == "AUTH_ERROR":
+            hint = "请在模型设置中检查 API Key 是否正确"
+        elif code == "INVALID_CONFIG":
+            hint = "请在模型设置中检查配置完整性"
+        elif code == "MODEL_NOT_FOUND":
+            hint = "请确认模型名称正确且 API 接口可用"
+        elif code == "CONNECTION_ERROR":
+            hint = "请检查网络连接或接口地址"
+        elif code == "TIMEOUT":
+            hint = "服务器响应超时，请稍后重试"
+        else:
+            hint = message
+
+        self.chat_display.update_temp_bubble(f"\n\n[错误] {hint}")
         self.chat_display.finalize_temp_bubble()
         self.accumulated_text = ""
         self.input_bar.send_btn.setEnabled(True)
         self.input_bar.input_edit.setEnabled(True)
         self.input_bar.input_edit.setFocus()
-        logger.error(f"LLM error: {error_msg}")
 
     def on_screenshot_requested(self):
         if self.main_window and hasattr(self.main_window, "start_screenshot"):

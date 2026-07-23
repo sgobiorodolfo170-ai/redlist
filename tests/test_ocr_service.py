@@ -1,9 +1,33 @@
 import threading
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from src.ocr.ocr_service import OCRService, TextBlock
+
+
+class _FakePILImage:
+    def __init__(self):
+        self._data = np.zeros((50, 80, 3), dtype=np.uint8)
+
+    def __array__(self, dtype=None):
+        return self._data
+
+    def tobytes(self):
+        return self._data.tobytes()
+
+
+class _FakePILGrayscale:
+    def __init__(self):
+        self._data = np.zeros((50, 80), dtype=np.uint8)
+
+    def __array__(self, dtype=None):
+        return self._data
+
+    def tobytes(self):
+        return self._data.tobytes()
 
 
 @pytest.fixture(autouse=True)
@@ -23,6 +47,14 @@ def make_fresh_svc():
     svc._pending_callback = None
     svc._initialized = True
     return svc
+
+
+@contextmanager
+def _sync_thread():
+    def sync_start(self):
+        self._target(*self._args, **self._kwargs)
+    with patch.object(threading.Thread, "start", sync_start):
+        yield
 
 
 class TestTextBlock:
@@ -92,6 +124,16 @@ class TestOCRServiceLoadAsync:
         svc.release()
         assert svc._ocr is None
         mock_predictor.clear_intermediate_tensor.assert_called_once()
+        mock_predictor.try_shrink_memory.assert_called_once()
+
+    def test_release_handles_predictor_error(self, reset_singleton):
+        svc = make_fresh_svc()
+        mock_predictor = MagicMock()
+        mock_predictor.clear_intermediate_tensor.side_effect = RuntimeError("predictor error")
+        svc._ocr.text_detector.predictor = mock_predictor
+
+        svc.release()
+        assert svc._ocr is None
 
     def test_release_cancels_loading(self, reset_singleton):
         svc = make_fresh_svc()
@@ -195,3 +237,155 @@ class TestOCRServiceLifecycle:
 
         svc._ocr = MagicMock()
         assert svc.is_available()
+
+    def test_get_init_error_returns_none(self, reset_singleton):
+        svc = make_fresh_svc()
+        assert svc.get_init_error() is None
+
+
+class TestOCRServiceImageHash:
+    def test_hash_from_file_path(self, reset_singleton, tmp_path):
+        img_file = tmp_path / "test.png"
+        img_file.write_bytes(b"fake_image_bytes")
+        svc = make_fresh_svc()
+        h = svc._compute_image_hash(str(img_file))
+        assert isinstance(h, str)
+        assert len(h) == 32
+
+    def test_hash_from_tobytes_object(self, reset_singleton):
+        svc = make_fresh_svc()
+        obj = MagicMock()
+        obj.tobytes.return_value = b"fake_data"
+        h = svc._compute_image_hash(obj)
+        assert isinstance(h, str)
+        assert len(h) == 32
+
+    def test_hash_fallback_on_error(self, reset_singleton):
+        svc = make_fresh_svc()
+        obj = object()
+        h = svc._compute_image_hash(obj)
+        assert isinstance(h, str)
+        assert len(h) == 32
+
+    def test_hash_tobytes_exception(self, reset_singleton):
+        svc = make_fresh_svc()
+        obj = MagicMock()
+        obj.tobytes.side_effect = RuntimeError("can't convert")
+        h = svc._compute_image_hash(obj)
+        assert isinstance(h, str)
+        assert len(h) == 32
+
+
+class TestOCRServiceLoadAsyncFull:
+    def test_already_loaded_calls_callback(self, reset_singleton):
+        svc = make_fresh_svc()
+        callback = MagicMock()
+        with patch("paddleocr.PaddleOCR") as mock_ocr:
+            svc.load_async(callback=callback)
+        mock_ocr.assert_not_called()
+        callback.assert_called_once_with(True)
+
+    def test_success(self, reset_singleton):
+        svc = make_fresh_svc()
+        svc._ocr = None
+        callback = MagicMock()
+        with patch("paddleocr.PaddleOCR"):
+            with _sync_thread():
+                svc.load_async(callback=callback)
+        assert svc.is_loaded()
+        callback.assert_called_once_with(True)
+
+    def test_cancelled(self, reset_singleton):
+        svc = make_fresh_svc()
+        svc._ocr = None
+        callback = MagicMock()
+
+        def _cancel_after_init(*args, **kwargs):
+            svc._cancel_load = True
+            return MagicMock()
+
+        with patch("paddleocr.PaddleOCR", side_effect=_cancel_after_init):
+            with _sync_thread():
+                svc.load_async(callback=callback)
+        assert not svc.is_loaded()
+        callback.assert_called_once_with(False)
+
+    def test_import_error(self, reset_singleton):
+        svc = make_fresh_svc()
+        svc._ocr = None
+        callback = MagicMock()
+        with patch("paddleocr.PaddleOCR", side_effect=ImportError("no paddle")):
+            with _sync_thread():
+                svc.load_async(callback=callback)
+        assert not svc.is_loaded()
+        callback.assert_called_once_with(False)
+
+    def test_generic_exception(self, reset_singleton):
+        svc = make_fresh_svc()
+        svc._ocr = None
+        callback = MagicMock()
+        with patch("paddleocr.PaddleOCR", side_effect=RuntimeError("unexpected")):
+            with _sync_thread():
+                svc.load_async(callback=callback)
+        assert not svc.is_loaded()
+        callback.assert_called_once_with(False)
+
+
+class TestOCRServiceRecognizeInput:
+    @patch("src.ocr.ocr_service.get_cache")
+    def test_numpy_array_color(self, mock_get_cache, reset_singleton):
+        mock_get_cache.return_value = MagicMock()
+        mock_get_cache.return_value.get.return_value = None
+        svc = make_fresh_svc()
+        svc._ocr.ocr.return_value = None
+        img = np.zeros((100, 200, 3), dtype=np.uint8)
+        result = svc.recognize(img)
+        assert result == []
+
+    @patch("src.ocr.ocr_service.get_cache")
+    def test_numpy_array_grayscale(self, mock_get_cache, reset_singleton):
+        mock_get_cache.return_value = MagicMock()
+        mock_get_cache.return_value.get.return_value = None
+        svc = make_fresh_svc()
+        svc._ocr.ocr.return_value = None
+        img = np.zeros((100, 200), dtype=np.uint8)
+        svc.recognize(img)
+        svc._ocr.ocr.assert_called_once()
+        input_arg = svc._ocr.ocr.call_args[0][0]
+        assert len(input_arg.shape) == 3
+        assert input_arg.shape[2] == 3
+
+    @patch("src.ocr.ocr_service.get_cache")
+    def test_pil_image(self, mock_get_cache, reset_singleton):
+        mock_get_cache.return_value = MagicMock()
+        mock_get_cache.return_value.get.return_value = None
+        svc = make_fresh_svc()
+        svc._ocr.ocr.return_value = None
+
+        result = svc.recognize(_FakePILImage())
+        assert result == []
+
+    @patch("src.ocr.ocr_service.get_cache")
+    def test_pil_image_grayscale(self, mock_get_cache, reset_singleton):
+        mock_get_cache.return_value = MagicMock()
+        mock_get_cache.return_value.get.return_value = None
+        svc = make_fresh_svc()
+        svc._ocr.ocr.return_value = None
+
+        svc.recognize(_FakePILGrayscale())
+        svc._ocr.ocr.assert_called_once()
+        input_arg = svc._ocr.ocr.call_args[0][0]
+        assert len(input_arg.shape) == 3
+        assert input_arg.shape[2] == 3
+
+
+class TestOCRServiceNpFallback:
+    @patch("src.ocr.ocr_service.get_cache")
+    @patch("src.ocr.ocr_service.np", None)
+    def test_recognize_string_when_np_is_none(self, mock_get_cache, reset_singleton):
+        mock_get_cache.return_value = MagicMock()
+        mock_get_cache.return_value.get.return_value = None
+        svc = make_fresh_svc()
+        svc._ocr.ocr.return_value = None
+        result = svc.recognize("test.png")
+        assert result == []

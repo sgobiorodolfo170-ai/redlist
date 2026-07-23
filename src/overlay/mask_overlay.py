@@ -339,6 +339,54 @@ class MaskTranslationOverlay(_BaseMaskOverlay):
         self.all_translated_text = "\n".join([item[2] for item in items])
         self.update()
 
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        painter.fillRect(self.rect(), QBrush(QColor(0, 0, 0, 120)))
+
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+        painter.fillRect(self.screenshot_rect, QBrush(QColor(0, 0, 0, 0)))
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+
+        pen = QPen(self._paint_border_color(), 2, Qt.PenStyle.SolidLine)
+        painter.setPen(pen)
+        painter.drawRect(self.screenshot_rect.adjusted(0, 0, -1, -1))
+
+        painter.fillRect(self.screenshot_rect, QBrush(QColor(255, 255, 255, 240)))
+
+        painter.save()
+        painter.setClipRect(self.screenshot_rect)
+
+        for item in self.text_items:
+            if len(item) < 3:
+                continue
+            bbox, _, translated = item[:3]
+            if not translated:
+                continue
+
+            painter.setPen(QColor(50, 50, 50))
+
+            base_px = int(bbox.height() * 0.9)
+            screen = QGuiApplication.primaryScreen()
+            dpi = screen.logicalDotsPerInch() if screen else 96
+            base_pt = max(6, int(base_px * 72 / dpi))
+
+            text_rect = QRect(bbox.x() + 3, bbox.y(), bbox.width() - 6, bbox.height())
+            font = QFont("Microsoft YaHei", base_pt)
+            fm = QFontMetrics(font)
+            if fm.horizontalAdvance(translated) > text_rect.width():
+                for pt in range(base_pt - 1, 5, -1):
+                    font.setPointSize(pt)
+                    fm = QFontMetrics(font)
+                    if fm.horizontalAdvance(translated) <= text_rect.width():
+                        break
+
+            painter.setFont(font)
+            painter.drawText(text_rect, Qt.TextFlag.TextWordWrap, translated)
+
+        painter.restore()
+
     def _retry_translation(self):
         self.retry_signal.emit()
 

@@ -163,12 +163,16 @@ class InputBar(QWidget):
         self.model_combo.setToolTip("选择模型")
         self.model_combo.setMinimumWidth(50)
         self.model_combo.activated.connect(self.on_model_changed)
+        self.model_combo.view().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.model_combo.view().customContextMenuRequested.connect(self._show_model_context_menu)
         toolbar_row.addWidget(self.model_combo)
 
         self.expert_combo = QComboBox()
         self.expert_combo.setToolTip("选择提示词专家")
         self.expert_combo.setMinimumWidth(67)
         self.expert_combo.activated.connect(self.on_expert_changed)
+        self.expert_combo.view().setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.expert_combo.view().customContextMenuRequested.connect(self._show_expert_context_menu)
         toolbar_row.addWidget(self.expert_combo)
 
         toolbar_row.addStretch()
@@ -383,6 +387,116 @@ class InputBar(QWidget):
         self.input_edit.clear()
         self.input_edit.setFocus()
         self.send_signal.emit(content, model_config)
+
+    def _show_model_context_menu(self, pos):
+        index = self.model_combo.view().indexAt(pos)
+        if not index.isValid():
+            return
+        data = self.model_combo.itemData(index.row())
+        if not isinstance(data, dict):
+            return
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: white;
+                border: 1px solid #DEE2E6;
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 20px;
+                font-size: 13px;
+                color: {COLORS["text_primary"]};
+            }}
+            QMenu::item:hover {{
+                background-color: {COLORS["hover"]};
+                border-radius: 4px;
+            }}
+        """)
+
+        edit_action = menu.addAction("编辑")
+        menu.addSeparator()
+        delete_action = menu.addAction("删除")
+
+        action = menu.exec(self.model_combo.view().viewport().mapToGlobal(pos))
+        if action == edit_action:
+            dialog = ModelDialog(self, edit_data=data)
+            if dialog.exec():
+                result = dialog.get_result()
+                if result:
+                    providers = list(self.settings.get("llm_providers", []))
+                    for i, p in enumerate(providers):
+                        if p.get("name") == data.get("name"):
+                            providers[i] = result
+                            break
+                    self.settings.set("llm_providers", providers, immediate=True)
+                    self.reload_providers()
+                    for i in range(self.model_combo.count()):
+                        d = self.model_combo.itemData(i)
+                        if isinstance(d, dict) and d.get("name") == result["name"]:
+                            self.model_combo.setCurrentIndex(i)
+                            break
+        elif action == delete_action:
+            providers = list(self.settings.get("llm_providers", []))
+            providers = [p for p in providers if p.get("name") != data.get("name")]
+            self.settings.set("llm_providers", providers, immediate=True)
+            self.reload_providers()
+
+    def _show_expert_context_menu(self, pos):
+        index = self.expert_combo.view().indexAt(pos)
+        if not index.isValid():
+            return
+        data = self.expert_combo.itemData(index.row())
+        if not isinstance(data, dict):
+            return
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background-color: white;
+                border: 1px solid #DEE2E6;
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 6px 20px;
+                font-size: 13px;
+                color: {COLORS["text_primary"]};
+            }}
+            QMenu::item:hover {{
+                background-color: {COLORS["hover"]};
+                border-radius: 4px;
+            }}
+        """)
+
+        edit_action = menu.addAction("编辑")
+        menu.addSeparator()
+        delete_action = menu.addAction("删除")
+
+        action = menu.exec(self.expert_combo.view().viewport().mapToGlobal(pos))
+        if action == edit_action:
+            dialog = PromptExpertDialog(self, edit_data=data)
+            if dialog.exec():
+                result = dialog.get_result()
+                if result:
+                    experts = list(self.settings.get("prompt_experts", []))
+                    for i, e in enumerate(experts):
+                        if e.get("name") == data.get("name"):
+                            experts[i] = result
+                            break
+                    self.settings.set("prompt_experts", experts, immediate=True)
+                    self.reload_experts()
+                    for i in range(self.expert_combo.count()):
+                        d = self.expert_combo.itemData(i)
+                        if isinstance(d, dict) and d.get("name") == result["name"]:
+                            self.expert_combo.setCurrentIndex(i)
+                            break
+        elif action == delete_action:
+            experts = list(self.settings.get("prompt_experts", []))
+            experts = [e for e in experts if e.get("name") != data.get("name")]
+            self.settings.set("prompt_experts", experts, immediate=True)
+            self.reload_experts()
 
     def set_main_window(self, main_window):
         self.main_window = main_window

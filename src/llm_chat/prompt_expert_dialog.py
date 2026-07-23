@@ -17,11 +17,11 @@ from src.theme import COLORS
 class PromptExpertDialog(QDialog):
     def __init__(self, parent=None, edit_data=None):
         super().__init__(parent)
-        self.setWindowTitle("新增提示词专家")
+        self.edit_data = edit_data
+        self.setWindowTitle("编辑提示词专家" if self.edit_data else "新增提示词专家")
         self.setFixedSize(480, 340)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self._result = None
-        self.edit_data = edit_data
         self.init_ui()
 
     def init_ui(self):
@@ -63,10 +63,6 @@ class PromptExpertDialog(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
-
-        title = QLabel("新增提示词专家")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORS['text_primary']};")
-        layout.addWidget(title)
 
         name_label = QLabel("专家名称")
         name_label.setStyleSheet("font-size: 13px; font-weight: 500;")

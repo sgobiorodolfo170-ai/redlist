@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.ocr.ocr_thread import OCRThread
 from src.ocr.ocr_service import OCRService, TextBlock
+from src.ocr.ocr_thread import OCRThread
 
 
 class FakeImage:
@@ -71,6 +71,19 @@ class TestOCRThread:
         with patch("src.ocr.ocr_thread.OCRService") as mock_cls:
             svc = self._make_mock_service()
             svc.is_available.return_value = False
+            mock_cls.return_value = svc
+
+            errors = []
+            thread = OCRThread(FakeImage())
+            thread.error_signal.connect(lambda e: errors.append(e))
+            thread.run()
+
+        assert len(errors) == 1
+
+    def test_recognize_exception_emits_error(self):
+        with patch("src.ocr.ocr_thread.OCRService") as mock_cls:
+            svc = self._make_mock_service()
+            svc.recognize.side_effect = RuntimeError("recognize failed")
             mock_cls.return_value = svc
 
             errors = []
